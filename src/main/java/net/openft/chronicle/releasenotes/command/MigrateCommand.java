@@ -30,7 +30,9 @@ public final class MigrateCommand implements Runnable {
     @Option(
         names = "--token",
         description = "Specifies a GitHub personal access token used to gain access to the GitHub API",
-        required = true
+        required = true,
+        interactive = true,
+        arity = "0..1"
     )
     private String token;
 
