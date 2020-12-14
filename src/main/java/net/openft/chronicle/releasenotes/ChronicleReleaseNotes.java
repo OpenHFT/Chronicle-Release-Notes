@@ -29,7 +29,8 @@ public final class ChronicleReleaseNotes {
         descriptionHeading   = "%nDescription: ",
         parameterListHeading = "%nParameters:%n%n",
         optionListHeading    = "%nOptions:%n",
-        commandListHeading   = "%nCommands:%n"
+        commandListHeading   = "%nCommands:%n",
+        sortOptions = false
     )
     private static final class CommandPreset {}
 }
