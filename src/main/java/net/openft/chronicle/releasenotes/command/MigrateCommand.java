@@ -1,9 +1,13 @@
 package net.openft.chronicle.releasenotes.command;
 
+import net.openft.chronicle.releasenotes.git.GitHubConnector;
+import net.openft.chronicle.releasenotes.git.Git;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
+import java.io.IOException;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Command(
     name = "migrate",
@@ -38,6 +42,20 @@ public final class MigrateCommand implements Runnable {
 
     @Override
     public void run() {
+        var repository = Git.getCurrentRepository();
+        var gitHub = GitHubConnector.connectWithAccessToken(token);
 
+        var fromMilestones = from.stream().map(x -> gitHub.getMilestone(repository, x)).collect(Collectors.toList());
+        var toMilestone = gitHub.getMilestone(repository, to);
+
+        fromMilestones.stream()
+            .flatMap(ghMilestone -> gitHub.getMilestoneIssues(ghMilestone).stream())
+            .forEach(ghIssue -> {
+                try {
+                    ghIssue.setMilestone(toMilestone);
+                } catch (IOException e) {
+                    throw new RuntimeException("Failed to assign issue #" + ghIssue.getNumber() + " to milestone '" + to + "'");
+                }
+            });
     }
 }

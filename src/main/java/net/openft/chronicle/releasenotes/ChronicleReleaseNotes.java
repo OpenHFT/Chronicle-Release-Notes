@@ -22,6 +22,14 @@ public final class ChronicleReleaseNotes {
         commandLine.addMixin("commandPreset", new CommandPreset());
         commandLine.getSubcommands().values().forEach(subcommand -> subcommand.addMixin("commandPreset", new CommandPreset()));
 
+        commandLine.setExecutionExceptionHandler((exception, cmdLine, parseResult) -> {
+            cmdLine.getErr().println(cmdLine.getColorScheme().errorText(exception.getMessage()));
+
+            return cmdLine.getExitCodeExceptionMapper() != null
+                ? cmdLine.getExitCodeExceptionMapper().getExitCode(exception)
+                : cmdLine.getCommandSpec().exitCodeOnExecutionException();
+        });
+
         commandLine.execute(args);
     }
 
