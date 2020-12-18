@@ -1,5 +1,6 @@
 package net.openft.chronicle.releasenotes.command;
 
+import net.openft.chronicle.releasenotes.git.Git;
 import net.openft.chronicle.releasenotes.git.GitHubConnector;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -35,7 +36,7 @@ public final class ReleaseCommand implements Runnable {
 
     @Override
     public void run() {
-        final var repository = "dekmm/gren-testing";
+        final var repository = Git.getCurrentRepository();
         final var github = GitHubConnector.connectWithAccessToken(token);
 
         final var milestoneRef = github.getMilestone(repository, milestone);
