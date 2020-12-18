@@ -42,11 +42,11 @@ public final class MigrateCommand implements Runnable {
 
     @Override
     public void run() {
-        var repository = Git.getCurrentRepository();
-        var gitHub = GitHubConnector.connectWithAccessToken(token);
+        final var repository = Git.getCurrentRepository();
+        final var gitHub = GitHubConnector.connectWithAccessToken(token);
 
-        var fromMilestones = from.stream().map(x -> gitHub.getMilestone(repository, x)).collect(Collectors.toList());
-        var toMilestone = gitHub.getMilestone(repository, to);
+        final var fromMilestones = from.stream().map(x -> gitHub.getMilestone(repository, x)).collect(Collectors.toList());
+        final var toMilestone = gitHub.getMilestone(repository, to);
 
         fromMilestones.stream()
             .flatMap(ghMilestone -> gitHub.getMilestoneIssues(ghMilestone).stream())

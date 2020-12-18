@@ -1,5 +1,6 @@
 package net.openft.chronicle.releasenotes.command;
 
+import net.openft.chronicle.releasenotes.git.GitHubConnector;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
@@ -11,7 +12,8 @@ public final class ReleaseCommand implements Runnable {
 
     @Option(
         names = "--tag",
-        description = "Specifies a tag for which the release notes will get generated"
+        description = "Specifies a tag for which the release notes will get generated",
+        required = true
     )
     private String tag;
 
@@ -33,6 +35,13 @@ public final class ReleaseCommand implements Runnable {
 
     @Override
     public void run() {
+        final var repository = "dekmm/gren-testing";
+        final var github = GitHubConnector.connectWithAccessToken(token);
 
+        final var milestoneRef = github.getMilestone(repository, milestone);
+
+        final var release = github.createRelease(tag, milestoneRef);
+
+        System.out.println("Created release for tag '" + tag + "': " + release.getHtmlUrl().toString());
     }
 }
