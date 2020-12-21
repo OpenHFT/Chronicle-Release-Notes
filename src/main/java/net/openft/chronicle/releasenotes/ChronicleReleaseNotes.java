@@ -4,6 +4,7 @@ import net.openft.chronicle.releasenotes.command.MigrateCommand;
 import net.openft.chronicle.releasenotes.command.ReleaseCommand;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.IVersionProvider;
 
 @Command(
     name = "chronicle-release-notes",
@@ -12,6 +13,7 @@ import picocli.CommandLine.Command;
         ReleaseCommand.class,
         MigrateCommand.class
     },
+    versionProvider = ChronicleReleaseNotes.VersionProvider.class,
     mixinStandardHelpOptions = true
 )
 public final class ChronicleReleaseNotes {
@@ -41,4 +43,14 @@ public final class ChronicleReleaseNotes {
         sortOptions = false
     )
     private static final class CommandPreset {}
+
+    protected static final class VersionProvider implements IVersionProvider {
+
+        @Override
+        public String[] getVersion() {
+            return new String[] {
+                getClass().getPackage().getImplementationVersion()
+            };
+        }
+    }
 }
