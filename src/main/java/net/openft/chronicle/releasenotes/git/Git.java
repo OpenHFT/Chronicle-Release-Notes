@@ -2,9 +2,6 @@ package net.openft.chronicle.releasenotes.git;
 
 import static org.eclipse.jgit.lib.ConfigConstants.CONFIG_REMOTE_SECTION;
 
-import net.openft.chronicle.releasenotes.exception.git.GitOriginNotFoundException;
-import net.openft.chronicle.releasenotes.exception.git.GitRepositoryNotFoundException;
-import net.openft.chronicle.releasenotes.exception.git.UnsupportedGitProviderException;
 import net.openft.chronicle.releasenotes.git.GitUrlParser.GitProvider;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 
@@ -28,18 +25,18 @@ public final class Git {
             var origin = repository.getConfig().getString(CONFIG_REMOTE_SECTION, "origin", "url");
 
             if (origin == null) {
-                throw new GitOriginNotFoundException();
+                throw new RuntimeException("Origin not found for git repository");
             }
 
             var parseResult = GitUrlParser.parseUrl(origin);
 
             if (parseResult.getGitProvider() == GitProvider.UNKNOWN) {
-                throw new UnsupportedGitProviderException(origin);
+                throw new RuntimeException("Unsupported git provider (url = " + origin + ")");
             }
 
             return parseResult.getOwner() + "/" + parseResult.getRepository();
         } catch (IOException e) {
-            throw new GitRepositoryNotFoundException(currentDir);
+            throw new RuntimeException("Git repository not found in directory '" + currentDir + "'");
         }
     }
 }

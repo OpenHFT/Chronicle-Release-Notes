@@ -5,6 +5,8 @@ import net.openft.chronicle.releasenotes.git.GitHubConnector;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
+import java.util.List;
+
 @Command(
     name = "release",
     description = "Generates release notes for a specific tag"
@@ -26,6 +28,14 @@ public final class ReleaseCommand implements Runnable {
     private String milestone;
 
     @Option(
+        names = "--ignoreLabels",
+        description = "Specifies which issues to ignore based on the provided label names",
+        split = ",",
+        arity = "1..*"
+    )
+    private List<String> ignoreLabels;
+
+    @Option(
         names = "--token",
         description = "Specifies a GitHub personal access token used to gain access to the GitHub API",
         required = true,
@@ -41,7 +51,7 @@ public final class ReleaseCommand implements Runnable {
 
         final var milestoneRef = github.getMilestone(repository, milestone);
 
-        final var release = github.createRelease(tag, milestoneRef);
+        final var release = github.createRelease(tag, milestoneRef, ignoreLabels);
 
         System.out.println("Created release for tag '" + tag + "': " + release.getHtmlUrl().toString());
     }

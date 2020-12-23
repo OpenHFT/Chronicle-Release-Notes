@@ -2,9 +2,6 @@ package net.openft.chronicle.releasenotes.git;
 
 import static java.util.Objects.requireNonNull;
 
-import net.openft.chronicle.releasenotes.exception.github.GitHubConnectionFailedException;
-import net.openft.chronicle.releasenotes.exception.github.GitHubMilestoneNotFoundException;
-import net.openft.chronicle.releasenotes.exception.github.GitHubRepositoryNotFoundException;
 import org.kohsuke.github.GHIssue;
 import org.kohsuke.github.GHIssueState;
 import org.kohsuke.github.GHMilestone;
@@ -31,7 +28,7 @@ public final class GitHubConnector {
         try {
             return gitHub.getRepository(repository);
         } catch (IOException e) {
-            throw new GitHubRepositoryNotFoundException(repository);
+            throw new RuntimeException("Repository '" + repository + "' not found");
         }
     }
 
@@ -44,9 +41,9 @@ public final class GitHubConnector {
                 .stream()
                 .filter(ghMilestone -> ghMilestone.getTitle().equals(milestone))
                 .findAny()
-                .orElseThrow(() -> new GitHubMilestoneNotFoundException(milestone));
+                .orElseThrow(() -> new RuntimeException("Milestone '" + milestone + "' not found"));
         } catch (IOException e) {
-            throw new GitHubMilestoneNotFoundException(milestone);
+            throw new RuntimeException("Milestone '" + milestone + "' not found");
         }
     }
 
@@ -76,40 +73,70 @@ public final class GitHubConnector {
         }
     }
 
-    public GHRelease createRelease(String tag, GHMilestone milestone) {
+    public GHRelease createRelease(String tag, GHMilestone milestone, List<String> ignoredLabels) {
         requireNonNull(tag);
         requireNonNull(milestone);
 
         try {
+            if (milestone.getOwner().listTags().toList().stream().noneMatch(ghTag -> ghTag.getName().equals(tag))) {
+                throw new RuntimeException("Tag '" + tag + "' not found");
+            }
+
             return milestone.getOwner().createRelease(tag)
                 .name(tag)
-                .body(createReleaseBody(milestone))
+                .body(createReleaseBody(milestone, ignoredLabels))
                 .create();
         } catch (IOException e) {
             throw new RuntimeException("Failed to create release for tag '" + tag + "'");
         }
     }
 
-    private String createReleaseBody(GHMilestone milestone) {
+    private String createReleaseBody(GHMilestone milestone, List<String> ignoredLabels) {
         requireNonNull(milestone);
 
         final var body = new StringBuilder();
 
-        getClosedMilestoneIssues(milestone).forEach(ghIssue -> body
+        var stream = getClosedMilestoneIssues(milestone).stream();
+
+        if (ignoredLabels != null) {
+            stream = stream.filter(issue -> issue.getLabels().stream().anyMatch(ghLabel -> ignoredLabels.contains(ghLabel.getName())));
+        }
+
+        stream.forEach(issue -> body
             .append("- [**")
-            .append(ghIssue.getLabels().isEmpty() ? "closed" : ghIssue.getLabels().stream().findFirst().get().getName())
+            .append(issue.getLabels().isEmpty() ? "closed" : issue.getLabels().stream().findFirst().get().getName())
             .append("**] ")
-            .append(ghIssue.getTitle())
-        .append('\n'));
+            .append(issue.getTitle())
+            .append('\n')
+        );
 
         return body.toString();
+    }
+
+    public void migrateIssues(List<GHMilestone> fromMilestones, GHMilestone toMilestone, List<String> ignoredLabels) {
+        requireNonNull(fromMilestones);
+        requireNonNull(toMilestone);
+
+        var stream = fromMilestones.stream().flatMap(milestone -> getMilestoneIssues(milestone).stream());
+
+        if (ignoredLabels != null) {
+            stream = stream.filter(issue -> issue.getLabels().stream().anyMatch(ghLabel -> ignoredLabels.contains(ghLabel.getName())));
+        }
+
+        stream.forEach(ghIssue -> {
+            try {
+                ghIssue.setMilestone(toMilestone);
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to assign issue #" + ghIssue.getNumber() + " to milestone '" + toMilestone.getTitle() + "'");
+            }
+        });
     }
 
     public static GitHubConnector connectWithAccessToken(String token) {
         try {
             return new GitHubConnector(token);
         } catch (IOException e) {
-            throw new GitHubConnectionFailedException();
+            throw new RuntimeException("Failed to connect to GitHub");
         }
     }
 

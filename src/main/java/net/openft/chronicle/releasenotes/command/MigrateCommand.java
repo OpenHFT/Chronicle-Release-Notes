@@ -1,11 +1,10 @@
 package net.openft.chronicle.releasenotes.command;
 
-import net.openft.chronicle.releasenotes.git.GitHubConnector;
 import net.openft.chronicle.releasenotes.git.Git;
+import net.openft.chronicle.releasenotes.git.GitHubConnector;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -32,6 +31,14 @@ public final class MigrateCommand implements Runnable {
     private String to;
 
     @Option(
+        names = "--ignoreLabels",
+        description = "Specifies which issues to ignore based on the provided label names",
+        split = ",",
+        arity = "1..*"
+    )
+    private List<String> ignoreLabels;
+
+    @Option(
         names = "--token",
         description = "Specifies a GitHub personal access token used to gain access to the GitHub API",
         required = true,
@@ -48,14 +55,6 @@ public final class MigrateCommand implements Runnable {
         final var fromMilestones = from.stream().map(x -> gitHub.getMilestone(repository, x)).collect(Collectors.toList());
         final var toMilestone = gitHub.getMilestone(repository, to);
 
-        fromMilestones.stream()
-            .flatMap(ghMilestone -> gitHub.getMilestoneIssues(ghMilestone).stream())
-            .forEach(ghIssue -> {
-                try {
-                    ghIssue.setMilestone(toMilestone);
-                } catch (IOException e) {
-                    throw new RuntimeException("Failed to assign issue #" + ghIssue.getNumber() + " to milestone '" + to + "'");
-                }
-            });
+        gitHub.migrateIssues(fromMilestones, toMilestone, ignoreLabels);
     }
 }
