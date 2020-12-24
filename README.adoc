@@ -1,0 +1,100 @@
+= Chronicle Release Notes
+
+Chronicle Release Notes is a simple CLI utility designed to automate the generation of release notes for GitHub repositories.
+
+The CLI uses GitHub's milestone system to determine which issues should be included in the generated release notes.
+
+== Requirements
+
+Before using the Chronicle Release Notes CLI, make sure you have the following installed on your system:
+
+- link:https://openjdk.java.net/projects/jdk/11/[Java 11]
+- link:https://maven.apache.org/[Maven]
+
+== Build from Source
+
+To build the CLI from source, run the following command from the terminal:
+
+[source, text]
+----
+mvn clean install
+----
+
+This will create an executable JAR in the `target` folder called `chronicle-release-notes.jar`
+
+To test that everything was created correctly, you can run the following command from the terminal:
+
+[source, text]
+----
+java -jar target/chronicle-release-notes.jar --version
+----
+
+If everything was created correctly, you should see a version number printed out.
+
+== Native Build
+
+In order to reduce the amount of dependencies needed to use the Chronicle Release Notes CLI, there is a way to build it as a native image.
+
+=== Requirements
+
+Before being able to build the CLI as a native image, make sure you have the following installed on your system:
+
+- link:https://github.com/graalvm/graalvm-ce-builds/releases/tag/vm-20.3.0[GraalVM (Java 11)]
+- link:https://www.graalvm.org/reference-manual/native-image/#install-native-image[Native Image]
+- link:https://maven.apache.org/[Maven]
+
+=== Build
+
+To create the native image, run the following command from the terminal:
+
+[source, text]
+----
+mvn clean install -Pnative
+----
+
+The created image is located in the `target` folder, and it's called `chronicle-release-notes`
+
+=== Linux/macOS Installation
+
+To install the built image on your Linux/macOS system, you can run the following command from the terminal:
+
+[source, text]
+----
+mv target/chronicle-release-notes /usr/local/bin; source /usr/local/bin
+----
+
+To test that image was installed correctly, you can run the following command from the terminal:
+
+[source, text]
+----
+chronicle-release-notes --version
+----
+
+If everything was created correctly, you should see a version number printed out.
+
+== Commands
+
+- **release** - generates release notes for a specific tag
+- **migrate** - migrates issues from one or more milestones to a target milestone
+
+=== Release options
+
+[options="header"]
+|===
+^| Option ^| Presence ^| Description
+| **tag** | required | Specifies a tag for which the release notes will get generated
+| **milestone** | required | Specifies a milestone that will be used as a reference for the issues included in the generated release notes
+| **ignoreLabels** | optional | Specifies which issues to ignore based on the provided label names
+| **token** | required | Specifies a GitHub personal access token used to gain access to the GitHub API
+|===
+
+=== Migrate options
+
+[options="header"]
+|===
+^| Option ^| Presence ^| Description
+| **from** | required | Specifies one or more milestones that will be used as a migration source
+| **to** | required| Specifies a milestone that will be used as a migration destination
+| **ignoreLabels** | optional | Specifies which issues to ignore based on the provided label names
+| **token** | required | Specifies a GitHub personal access token used to gain access to the GitHub API
+|===
