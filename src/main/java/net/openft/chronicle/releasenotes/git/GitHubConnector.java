@@ -14,6 +14,9 @@ import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * @author Mislav Milicevic
+ */
 public final class GitHubConnector {
 
     private final GitHub gitHub;
@@ -22,6 +25,17 @@ public final class GitHubConnector {
         this.gitHub = new GitHubBuilder().withOAuthToken(requireNonNull(token)).build();
     }
 
+    /**
+     * Returns a {@link GHRepository} reference based on the provided
+     * {@code repository} name. The provided repository name must
+     * be in the format {@code owner/repository}.
+     *
+     * A {@link RuntimeException} is thrown if the repository is not found.
+     *
+     * @param repository name
+     * @return a {@link GHRepository} reference based on the provided
+     *         {@code repository} name
+     */
     public GHRepository getRepository(String repository) {
         requireNonNull(repository);
 
@@ -32,6 +46,18 @@ public final class GitHubConnector {
         }
     }
 
+    /**
+     * Returns a {@link GHMilestone} reference based on the provided
+     * {@code repository} and {@code milestone} names. The provided
+     * repository name must be in the format {@code owner/repository}.
+     *
+     * A {@link RuntimeException} is thrown if the milestone is not found.
+     *
+     * @param repository name
+     * @param milestone name
+     * @return a {@link GHMilestone} reference based on the provided
+     *         {@code repository} and {@code milestone} names
+     */
     public GHMilestone getMilestone(String repository, String milestone) {
         requireNonNull(repository);
         requireNonNull(milestone);
@@ -47,19 +73,41 @@ public final class GitHubConnector {
         }
     }
 
+    /**
+     * Returns a list of {@link GHIssue} that are contained in the
+     * provided {@code milestone}.
+     *
+     * A {@link RuntimeException} is thrown if the issues could not
+     * be fetched.
+     *
+     * @param milestone reference
+     * @return a list of {@link GHIssue} that are contained in the
+     *         provided {@code milestone}
+     */
     public List<GHIssue> getMilestoneIssues(GHMilestone milestone) {
         requireNonNull(milestone);
 
         return getMilestoneIssues(milestone, GHIssueState.ALL);
     }
 
+    /**
+     * Returns a list of closed {@link GHIssue} that are contained in
+     * the provided {@code milestone}.
+     *
+     * A {@link RuntimeException} is thrown if the issues could not
+     * be fetched.
+     *
+     * @param milestone reference
+     * @return a list of closed {@link GHIssue} that are contained in
+     *         the provided {@code milestone}
+     */
     public List<GHIssue> getClosedMilestoneIssues(GHMilestone milestone) {
         requireNonNull(milestone);
 
         return getMilestoneIssues(milestone, GHIssueState.CLOSED);
     }
 
-    public List<GHIssue> getMilestoneIssues(GHMilestone milestone, GHIssueState issueState) {
+    private List<GHIssue> getMilestoneIssues(GHMilestone milestone, GHIssueState issueState) {
         requireNonNull(milestone);
         requireNonNull(issueState);
 
@@ -73,6 +121,24 @@ public final class GitHubConnector {
         }
     }
 
+    /**
+     * Creates and returns a {@link GHRelease} reference for a specified
+     * {@code tag}. The provided {@code milestone} is used as a reference
+     * to generate the contents of the release notes associated with
+     * this release.
+     *
+     * If {@code ignoredLabels} is not {@code null} or is not empty, then
+     * all of the issues which contain one of the provided labels are
+     * ignored in the release note generation process.
+     *
+     * A {@link RuntimeException} is thrown if the provided {@code tag}
+     * does not exist or if the release creation fails.
+     *
+     * @param tag name
+     * @param milestone reference
+     * @param ignoredLabels a list of ignored labels
+     * @return a {@link GHRelease} reference for a specified {@code tag}
+     */
     public GHRelease createRelease(String tag, GHMilestone milestone, List<String> ignoredLabels) {
         requireNonNull(tag);
         requireNonNull(milestone);
@@ -99,7 +165,7 @@ public final class GitHubConnector {
         var stream = getClosedMilestoneIssues(milestone).stream();
 
         if (ignoredLabels != null) {
-            stream = stream.filter(issue -> issue.getLabels().stream().anyMatch(ghLabel -> ignoredLabels.contains(ghLabel.getName())));
+            stream = stream.filter(issue -> issue.getLabels().stream().noneMatch(ghLabel -> ignoredLabels.contains(ghLabel.getName())));
         }
 
         stream.forEach(issue -> body
@@ -113,6 +179,20 @@ public final class GitHubConnector {
         return body.toString();
     }
 
+    /**
+     * Migrates all issues from a list of a source milestones into a
+     * singular target milestone.
+     *
+     * If {@code ignoredLabels} is not {@code null} or is not empty, then
+     * all of the issues which contain one of the provided labels are
+     * ignored in the migration process.
+     *
+     * A {@link RuntimeException} is thrown if the migration process fails.
+     *
+     * @param fromMilestones a list source milestones
+     * @param toMilestone destination milestones
+     * @param ignoredLabels a list of ignored labels
+     */
     public void migrateIssues(List<GHMilestone> fromMilestones, GHMilestone toMilestone, List<String> ignoredLabels) {
         requireNonNull(fromMilestones);
         requireNonNull(toMilestone);
@@ -120,7 +200,7 @@ public final class GitHubConnector {
         var stream = fromMilestones.stream().flatMap(milestone -> getMilestoneIssues(milestone).stream());
 
         if (ignoredLabels != null) {
-            stream = stream.filter(issue -> issue.getLabels().stream().anyMatch(ghLabel -> ignoredLabels.contains(ghLabel.getName())));
+            stream = stream.filter(issue -> issue.getLabels().stream().noneMatch(ghLabel -> ignoredLabels.contains(ghLabel.getName())));
         }
 
         stream.forEach(ghIssue -> {
@@ -132,6 +212,16 @@ public final class GitHubConnector {
         });
     }
 
+    /**
+     * Creates and returns a {@link GitHubConnector} instance
+     * from a personal access token.
+     *
+     * A {@link RuntimeException} is thrown if a connection
+     * could not be established.
+     *
+     * @param token personal access token
+     * @return a {@link GitHubConnector} instance
+     */
     public static GitHubConnector connectWithAccessToken(String token) {
         try {
             return new GitHubConnector(token);

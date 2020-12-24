@@ -5,10 +5,23 @@ import static java.util.Objects.requireNonNull;
 import java.util.Arrays;
 import java.util.Objects;
 
+/**
+ * @author Mislav Milicevic
+ */
 public final class GitUrlParser {
 
     private static final GitProvider[] VALID_PROVIDERS = Arrays.copyOfRange(GitProvider.values(), 0, GitProvider.values().length - 1);
 
+    /**
+     * Parses a provided git {@code url} and returns the parsed
+     * results as a {@link ParseResult}.
+     *
+     * If the provided {@code url} does not belong to a registered
+     * {@link GitProvider}, an empty {@link ParseResult} is returned.
+     *
+     * @param url to parse
+     * @return {@link ParseResult}
+     */
     public static ParseResult parseUrl(final String url) {
         requireNonNull(url);
 
@@ -36,6 +49,11 @@ public final class GitUrlParser {
         return new ParseResult(gitProvider, owner, repository);
     }
 
+    /**
+     * Holds the information extracted from a parsed git URL.
+     *
+     * @author Mislav Milicevic
+     */
     public static class ParseResult {
 
         public static final ParseResult EMPTY = new ParseResult(GitProvider.UNKNOWN, null, null);
@@ -50,14 +68,29 @@ public final class GitUrlParser {
             this.repository = repository;
         }
 
+        /**
+         * Returns the {@link GitProvider}.
+         *
+         * @return the {@link GitProvider}.
+         */
         public GitProvider getGitProvider() {
             return gitProvider;
         }
 
+        /**
+         * Returns the repository owner.
+         *
+         * @return the repository owner.
+         */
         public String getOwner() {
             return owner;
         }
 
+        /**
+         * Returns the repository name.
+         *
+         * @return the repository name.
+         */
         public String getRepository() {
             return repository;
         }
@@ -77,9 +110,11 @@ public final class GitUrlParser {
         }
     }
 
-    /*
-    * In case other providers need to be supported in the future
-    * */
+    /**
+     * Represents different git providers.
+     *
+     * @author Mislav Milicevic
+     */
     public enum GitProvider {
         GITHUB {
             @Override
@@ -105,8 +140,18 @@ public final class GitUrlParser {
             }
         };
 
+        /**
+         * Returns the HTTP/S URL for this {@link GitProvider}.
+         *
+         * @return the HTTP/S URL for this {@link GitProvider}.
+         */
         public abstract String getHttpUrl();
 
+        /**
+         * Returns the SSH URL for this {@link GitProvider}.
+         *
+         * @return the SSH URL for this {@link GitProvider}.
+         */
         public abstract String getSshUrl();
     }
 }

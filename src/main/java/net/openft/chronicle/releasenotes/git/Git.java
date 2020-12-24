@@ -8,11 +8,29 @@ import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import java.io.File;
 import java.io.IOException;
 
+/**
+ * @author Mislav Milicevic
+ */
 public final class Git {
 
     private Git() {
     }
 
+    /**
+     * Returns the name of the current git repository in the
+     * format {@code owner/repository}.
+     *
+     * A {@link RuntimeException} is thrown if one of the
+     * following conditions is met:
+     * <ul>
+     *     <li>the current directory is not a git repository
+     *     <li>the repository origin does not exist
+     *     <li>the git repository provider is not supported
+     * </ul>
+     *
+     * @return the name of the current repository in the
+     *         format {@code owner/repository}
+     */
     public static String getCurrentRepository() {
         var currentDir = System.getProperty("user.dir");
         try {
