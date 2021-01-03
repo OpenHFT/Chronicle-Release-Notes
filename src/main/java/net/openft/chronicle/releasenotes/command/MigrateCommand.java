@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 public final class MigrateCommand implements Runnable {
 
     @Option(
-        names = "--from",
+        names = {"-f", "--from"},
         description = "Specifies one or more milestones that will be used as a migration source",
         required = true,
         split = ",",
@@ -24,14 +24,14 @@ public final class MigrateCommand implements Runnable {
     private List<String> from;
 
     @Option(
-        names = "--to",
+        names = {"-t", "--to"},
         description = "Specifies a milestone that will be used as a migration destination",
         required = true
     )
     private String to;
 
     @Option(
-        names = "--ignoreLabels",
+        names = {"-i", "--ignoreLabels"},
         description = "Specifies which issues to ignore based on the provided label names",
         split = ",",
         arity = "1..*"
@@ -39,7 +39,7 @@ public final class MigrateCommand implements Runnable {
     private List<String> ignoreLabels;
 
     @Option(
-        names = "--token",
+        names = {"-T", "--token"},
         description = "Specifies a GitHub personal access token used to gain access to the GitHub API",
         required = true,
         interactive = true,

@@ -1,5 +1,6 @@
 package net.openft.chronicle.releasenotes.git;
 
+import static java.util.Objects.requireNonNull;
 import static org.eclipse.jgit.lib.ConfigConstants.CONFIG_REMOTE_SECTION;
 
 import net.openft.chronicle.releasenotes.git.GitUrlParser.GitProvider;
@@ -7,11 +8,16 @@ import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.regex.Pattern;
 
 /**
  * @author Mislav Milicevic
  */
 public final class Git {
+
+    private static final Pattern REPOSITORY_PATTERN = Pattern.compile("^[a-z0-9-_.]+/[a-z0-9-_.]+$");
+
+    private static String configuredRepository;
 
     private Git() {
     }
@@ -32,6 +38,10 @@ public final class Git {
      *         format {@code owner/repository}
      */
     public static String getCurrentRepository() {
+        if (configuredRepository != null && !configuredRepository.isEmpty()) {
+            return configuredRepository;
+        }
+
         var currentDir = System.getProperty("user.dir");
         try {
             var repository = new FileRepositoryBuilder()
@@ -56,5 +66,15 @@ public final class Git {
         } catch (IOException e) {
             throw new RuntimeException("Git repository not found in directory '" + currentDir + "'");
         }
+    }
+
+    public static void setConfiguredRepository(String repository) {
+        requireNonNull(repository);
+
+        if (!REPOSITORY_PATTERN.matcher(repository).find()) {
+            throw new RuntimeException("Invalid repository naming format (must be 'owner/repository')");
+        }
+
+        configuredRepository = repository;
     }
 }

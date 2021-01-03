@@ -2,9 +2,12 @@ package net.openft.chronicle.releasenotes;
 
 import net.openft.chronicle.releasenotes.command.MigrateCommand;
 import net.openft.chronicle.releasenotes.command.ReleaseCommand;
+import net.openft.chronicle.releasenotes.git.Git;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.IVersionProvider;
+import picocli.CommandLine.Option;
+import picocli.CommandLine.ScopeType;
 
 @Command(
     name = "chronicle-release-notes",
@@ -18,8 +21,19 @@ import picocli.CommandLine.IVersionProvider;
 )
 public final class ChronicleReleaseNotes {
 
+    @Option(
+        names = {"-r", "--repository"},
+        description = "Specifies a target Git repository",
+        scope = ScopeType.INHERIT
+    )
+    void setRepository(String repository) {
+        if (repository != null) {
+            Git.setConfiguredRepository(repository);
+        }
+    }
+
     public static void main(String[] args) {
-        var commandLine = new CommandLine(new ChronicleReleaseNotes());
+        final var commandLine = new CommandLine(new ChronicleReleaseNotes());
 
         commandLine.addMixin("commandPreset", new CommandPreset());
         commandLine.getSubcommands().values().forEach(subcommand -> subcommand.addMixin("commandPreset", new CommandPreset()));

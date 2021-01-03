@@ -14,21 +14,21 @@ import java.util.List;
 public final class ReleaseCommand implements Runnable {
 
     @Option(
-        names = "--tag",
+        names = {"-t", "--tag"},
         description = "Specifies a tag for which the release notes will get generated",
         required = true
     )
     private String tag;
 
     @Option(
-        names = "--milestone",
+        names = {"-m", "--milestone"},
         description = "Specifies a milestone that will be used as a reference for the issues included in the generated release notes",
         required = true
     )
     private String milestone;
 
     @Option(
-        names = "--ignoreLabels",
+        names = {"-i", "--ignoreLabels"},
         description = "Specifies which issues to ignore based on the provided label names",
         split = ",",
         arity = "1..*"
@@ -36,7 +36,7 @@ public final class ReleaseCommand implements Runnable {
     private List<String> ignoreLabels;
 
     @Option(
-        names = "--token",
+        names = {"-T", "--token"},
         description = "Specifies a GitHub personal access token used to gain access to the GitHub API",
         required = true,
         interactive = true,
