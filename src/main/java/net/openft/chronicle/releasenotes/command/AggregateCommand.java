@@ -11,7 +11,7 @@ import java.util.stream.Collectors;
 
 @Command(
     name = "aggregate",
-    description = "Generates aggregated release notes from a set of repositories"
+    description = "Generates aggregated release notes from a set of releases"
 )
 public final class AggregateCommand implements Runnable {
 
