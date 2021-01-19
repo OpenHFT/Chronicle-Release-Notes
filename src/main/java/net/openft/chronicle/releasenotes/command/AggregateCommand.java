@@ -2,16 +2,18 @@ package net.openft.chronicle.releasenotes.command;
 
 import net.openft.chronicle.releasenotes.git.Git;
 import net.openft.chronicle.releasenotes.git.GitHubConnector;
+import net.openft.chronicle.releasenotes.git.release.cli.ReleaseReference;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Command(
-    name = "release",
-    description = "Generates release notes for a specific tag"
+    name = "aggregate",
+    description = "Generates aggregated release notes from a set of repositories"
 )
-public final class ReleaseCommand implements Runnable {
+public final class AggregateCommand implements Runnable {
 
     @Option(
         names = {"-t", "--tag"},
@@ -21,19 +23,12 @@ public final class ReleaseCommand implements Runnable {
     private String tag;
 
     @Option(
-        names = {"-m", "--milestone"},
-        description = "Specifies a milestone that will be used as a reference for the issues included in the generated release notes",
-        required = true
-    )
-    private String milestone;
-
-    @Option(
-        names = {"-i", "--ignoreLabels"},
-        description = "Specifies which issues to ignore based on the provided label names",
+        names = {"-R", "--releases"},
+        description = "Specifies which releases to include in the aggregated release notes",
         split = ",",
-        arity = "1..*"
+        arity = "0..*"
     )
-    private List<String> ignoreLabels;
+    private List<ReleaseReference> releases;
 
     @Option(
         names = {"-T", "--token"},
@@ -49,10 +44,10 @@ public final class ReleaseCommand implements Runnable {
         final var repository = Git.getCurrentRepository();
         final var github = GitHubConnector.connectWithAccessToken(token);
 
-        final var milestoneRef = github.getMilestone(repository, milestone);
-        final var closedIssues = github.getClosedMilestoneIssues(milestoneRef);
+        final var repositoryRef = github.getRepository(repository);
+        final var releaseRef = releases.stream().distinct().map(github::getRelease).collect(Collectors.toList());
 
-        final var release = github.createRelease(milestoneRef.getOwner(), tag, closedIssues, ignoreLabels);
+        final var release = github.createAggregatedRelease(repositoryRef, tag, releaseRef);
 
         System.out.println("Created release for tag '" + tag + "': " + release.getHtmlUrl().toString());
     }

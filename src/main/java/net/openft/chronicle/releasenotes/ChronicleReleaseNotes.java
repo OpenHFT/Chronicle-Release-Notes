@@ -1,8 +1,11 @@
 package net.openft.chronicle.releasenotes;
 
+import net.openft.chronicle.releasenotes.command.AggregateCommand;
 import net.openft.chronicle.releasenotes.command.MigrateCommand;
 import net.openft.chronicle.releasenotes.command.ReleaseCommand;
 import net.openft.chronicle.releasenotes.git.Git;
+import net.openft.chronicle.releasenotes.git.release.cli.ReleaseReference;
+import net.openft.chronicle.releasenotes.git.release.cli.ReleaseReferenceConverter;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.IVersionProvider;
@@ -14,6 +17,7 @@ import picocli.CommandLine.ScopeType;
     description = "Handles release note generation and issue migration between milestones",
     subcommands = {
         ReleaseCommand.class,
+        AggregateCommand.class,
         MigrateCommand.class
     },
     versionProvider = ChronicleReleaseNotes.VersionProvider.class,
@@ -37,6 +41,7 @@ public final class ChronicleReleaseNotes {
 
         commandLine.addMixin("commandPreset", new CommandPreset());
         commandLine.getSubcommands().values().forEach(subcommand -> subcommand.addMixin("commandPreset", new CommandPreset()));
+        commandLine.registerConverter(ReleaseReference.class, new ReleaseReferenceConverter());
 
         commandLine.setExecutionExceptionHandler((exception, cmdLine, parseResult) -> {
             cmdLine.getErr().println(cmdLine.getColorScheme().errorText(exception.getMessage()));

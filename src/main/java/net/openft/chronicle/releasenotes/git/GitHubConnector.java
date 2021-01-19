@@ -2,6 +2,9 @@ package net.openft.chronicle.releasenotes.git;
 
 import static java.util.Objects.requireNonNull;
 
+import net.openft.chronicle.releasenotes.git.release.Release;
+import net.openft.chronicle.releasenotes.git.release.ReleaseCreator;
+import net.openft.chronicle.releasenotes.git.release.cli.ReleaseReference;
 import org.kohsuke.github.GHIssue;
 import org.kohsuke.github.GHIssueState;
 import org.kohsuke.github.GHMilestone;
@@ -20,9 +23,11 @@ import java.util.stream.Collectors;
 public final class GitHubConnector {
 
     private final GitHub gitHub;
+    private final ReleaseCreator releaseCreator;
 
     private GitHubConnector(String token) throws IOException {
         this.gitHub = new GitHubBuilder().withOAuthToken(requireNonNull(token)).build();
+        this.releaseCreator = ReleaseCreator.getInstance();
     }
 
     /**
@@ -121,6 +126,18 @@ public final class GitHubConnector {
         }
     }
 
+    public GHRelease getRelease(ReleaseReference releaseReference) {
+        requireNonNull(releaseReference);
+
+        final var repository = getRepository(releaseReference.getRepository());
+
+        try {
+            return repository.getReleaseByTagName(releaseReference.getRelease());
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to fetch release for tag '" + releaseReference.getRelease() + "'");
+        }
+    }
+
     /**
      * Creates and returns a {@link GHRelease} reference for a specified
      * {@code tag}. The provided {@code milestone} is used as a reference
@@ -134,49 +151,72 @@ public final class GitHubConnector {
      * A {@link RuntimeException} is thrown if the provided {@code tag}
      * does not exist or if the release creation fails.
      *
+     * @param repository reference
      * @param tag name
-     * @param milestone reference
+     * @param issues to include in the release
      * @param ignoredLabels a list of ignored labels
      * @return a {@link GHRelease} reference for a specified {@code tag}
      */
-    public GHRelease createRelease(String tag, GHMilestone milestone, List<String> ignoredLabels) {
+    public GHRelease createRelease(GHRepository repository, String tag, List<GHIssue> issues, List<String> ignoredLabels) {
+        requireNonNull(repository);
         requireNonNull(tag);
-        requireNonNull(milestone);
+        requireNonNull(issues);
 
         try {
-            if (milestone.getOwner().listTags().toList().stream().noneMatch(ghTag -> ghTag.getName().equals(tag))) {
+            if (repository.listTags().toList().stream().noneMatch(ghTag -> ghTag.getName().equals(tag))) {
                 throw new RuntimeException("Tag '" + tag + "' not found");
             }
 
-            return milestone.getOwner().createRelease(tag)
-                .name(tag)
-                .body(createReleaseBody(milestone, ignoredLabels))
+            final var release = releaseCreator.createRelease(tag, issues, ignoredLabels);
+
+            return repository.createRelease(release.getTitle())
+                .name(release.getTitle())
+                .body(release.getBody())
                 .create();
         } catch (IOException e) {
             throw new RuntimeException("Failed to create release for tag '" + tag + "'");
         }
     }
 
-    private String createReleaseBody(GHMilestone milestone, List<String> ignoredLabels) {
-        requireNonNull(milestone);
+    /**
+     * Creates and returns a {@link GHRelease} reference for a specified
+     * {@code tag}. The provided {@code releases} are used as a reference
+     * to generate the contents of the release notes associated with
+     * this aggregated release.
+     *
+     * A {@link RuntimeException} is thrown if the provided {@code tag}
+     * does not exist or if the release creation fails.
+     *
+     * @param repository reference
+     * @param tag name
+     * @param releases to include in the aggregated release
+     * @return a {@link GHRelease} reference for a specified {@code tag}
+     */
+    public GHRelease createAggregatedRelease(GHRepository repository, String tag, List<GHRelease> releases) {
+        requireNonNull(repository);
+        requireNonNull(tag);
+        requireNonNull(releases);
 
-        final var body = new StringBuilder();
+        try {
+            final var tags = repository.listTags().toList();
 
-        var stream = getClosedMilestoneIssues(milestone).stream();
+            if (tags.stream().noneMatch(ghTag -> ghTag.getName().equals(tag))) {
+                throw new RuntimeException("Tag '" + tag + "' not found");
+            }
 
-        if (ignoredLabels != null) {
-            stream = stream.filter(issue -> issue.getLabels().stream().noneMatch(ghLabel -> ignoredLabels.contains(ghLabel.getName())));
+            final var normalizedReleases = releases.stream()
+                .map(release -> new Release(release.getName(), release.getBody()))
+                .collect(Collectors.toList());
+
+            final var release = releaseCreator.createAggregatedRelease(tag, normalizedReleases);
+
+            return repository.createRelease(release.getTitle())
+                .name(release.getTitle())
+                .body(release.getBody())
+                .create();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to create release for tag '" + tag + "'");
         }
-
-        stream.forEach(issue -> body
-            .append("- [**")
-            .append(issue.getLabels().isEmpty() ? "closed" : issue.getLabels().stream().findFirst().get().getName())
-            .append("**] ")
-            .append(issue.getTitle())
-            .append('\n')
-        );
-
-        return body.toString();
     }
 
     /**
