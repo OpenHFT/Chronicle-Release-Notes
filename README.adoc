@@ -75,6 +75,7 @@ If everything was created correctly, you should see a version number printed out
 == Commands
 
 - **release** - generates release notes for a specific tag
+- **aggregate** - generates aggregated release notes from a set of releases
 - **migrate** - migrates issues from one or more milestones to a target milestone
 
 === Release options
@@ -85,6 +86,16 @@ If everything was created correctly, you should see a version number printed out
 | **tag** | required | Specifies a tag for which the release notes will get generated
 | **milestone** | required | Specifies a milestone that will be used as a reference for the issues included in the generated release notes
 | **ignoreLabels** | optional | Specifies which issues to ignore based on the provided label names
+| **token** | required | Specifies a GitHub personal access token used to gain access to the GitHub API
+|===
+
+=== Aggregate options
+
+[options="header"]
+|===
+^| Option ^| Presence ^| Description
+| **tag** | required | Specifies a tag for which the release notes will get generated
+| **releases** | required | Specifies a set of releases that will be included in the generated release notes
 | **token** | required | Specifies a GitHub personal access token used to gain access to the GitHub API
 |===
 
