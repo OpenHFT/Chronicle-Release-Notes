@@ -36,6 +36,13 @@ public final class ReleaseCommand implements Runnable {
     private List<String> ignoreLabels;
 
     @Option(
+        names = {"-o", "--override"},
+        description = "Specifies if the generated release notes should override an already existing release",
+        defaultValue = "false"
+    )
+    private boolean override;
+
+    @Option(
         names = {"-T", "--token"},
         description = "Specifies a GitHub personal access token used to gain access to the GitHub API",
         required = true,
@@ -52,7 +59,7 @@ public final class ReleaseCommand implements Runnable {
         final var milestoneRef = github.getMilestone(repository, milestone);
         final var closedIssues = github.getClosedMilestoneIssues(milestoneRef);
 
-        final var release = github.createRelease(milestoneRef.getOwner(), tag, closedIssues, ignoreLabels);
+        final var release = github.createRelease(milestoneRef.getOwner(), tag, closedIssues, ignoreLabels, override);
 
         System.out.println("Created release for tag '" + tag + "': " + release.getHtmlUrl().toString());
     }

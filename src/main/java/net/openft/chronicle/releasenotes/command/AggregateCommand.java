@@ -31,6 +31,13 @@ public final class AggregateCommand implements Runnable {
     private List<ReleaseReference> releases;
 
     @Option(
+        names = {"-o", "--override"},
+        description = "Specifies if the generated release notes should override an already existing release",
+        defaultValue = "false"
+    )
+    private boolean override;
+
+    @Option(
         names = {"-T", "--token"},
         description = "Specifies a GitHub personal access token used to gain access to the GitHub API",
         required = true,
@@ -47,7 +54,7 @@ public final class AggregateCommand implements Runnable {
         final var repositoryRef = github.getRepository(repository);
         final var releaseRef = releases.stream().distinct().map(github::getRelease).collect(Collectors.toList());
 
-        final var release = github.createAggregatedRelease(repositoryRef, tag, releaseRef);
+        final var release = github.createAggregatedRelease(repositoryRef, tag, releaseRef, override);
 
         System.out.println("Created release for tag '" + tag + "': " + release.getHtmlUrl().toString());
     }

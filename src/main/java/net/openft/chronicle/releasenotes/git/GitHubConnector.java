@@ -158,6 +158,35 @@ public final class GitHubConnector {
      * @return a {@link GHRelease} reference for a specified {@code tag}
      */
     public GHRelease createRelease(GHRepository repository, String tag, List<GHIssue> issues, List<String> ignoredLabels) {
+        return createRelease(repository, tag, issues, ignoredLabels, false);
+    }
+
+    /**
+     * Creates and returns a {@link GHRelease} reference for a specified
+     * {@code tag}. The provided {@code milestone} is used as a reference
+     * to generate the contents of the release notes associated with
+     * this release.
+     *
+     * If {@code ignoredLabels} is not {@code null} or is not empty, then
+     * all of the issues which contain one of the provided labels are
+     * ignored in the release note generation process.
+     *
+     * In case a release for the specified tag already exists and {@code override}
+     * is {@code true}, the existing release will be updated with the contents
+     * of the newly generated release. Otherwise, a {@link RuntimeException}
+     * will be thrown.
+     *
+     * A {@link RuntimeException} is thrown if the provided {@code tag}
+     * does not exist or if the release creation fails.
+     *
+     * @param repository reference
+     * @param tag name
+     * @param issues to include in the release
+     * @param ignoredLabels a list of ignored labels
+     * @param override an existing release
+     * @return a {@link GHRelease} reference for a specified {@code tag}
+     */
+    public GHRelease createRelease(GHRepository repository, String tag, List<GHIssue> issues, List<String> ignoredLabels, boolean override) {
         requireNonNull(repository);
         requireNonNull(tag);
         requireNonNull(issues);
@@ -165,6 +194,21 @@ public final class GitHubConnector {
         try {
             if (repository.listTags().toList().stream().noneMatch(ghTag -> ghTag.getName().equals(tag))) {
                 throw new RuntimeException("Tag '" + tag + "' not found");
+            }
+
+            final var remoteRelease = repository.getReleaseByTagName(tag);
+
+            if (remoteRelease != null) {
+                if (!override) {
+                    throw new RuntimeException("Release for tag '" + tag + "' already exists: use --override to force an override of an existing release");
+                }
+
+                final var release = releaseCreator.createRelease(tag, issues, ignoredLabels);
+
+                return remoteRelease.update()
+                    .name(release.getTitle())
+                    .body(release.getBody())
+                    .update();
             }
 
             final var release = releaseCreator.createRelease(tag, issues, ignoredLabels);
@@ -193,6 +237,30 @@ public final class GitHubConnector {
      * @return a {@link GHRelease} reference for a specified {@code tag}
      */
     public GHRelease createAggregatedRelease(GHRepository repository, String tag, List<GHRelease> releases) {
+        return createAggregatedRelease(repository, tag, releases, false);
+    }
+
+    /**
+     * Creates and returns a {@link GHRelease} reference for a specified
+     * {@code tag}. The provided {@code releases} are used as a reference
+     * to generate the contents of the release notes associated with
+     * this aggregated release.
+     *
+     * In case a release for the specified tag already exists and {@code override}
+     * is {@code true}, the existing release will be updated with the contents
+     * of the newly generated release. Otherwise, a {@link RuntimeException}
+     * will be thrown.
+     *
+     * A {@link RuntimeException} is thrown if the provided {@code tag}
+     * does not exist or if the release creation fails.
+     *
+     * @param repository reference
+     * @param tag name
+     * @param releases to include in the aggregated release
+     * @param override an existing release
+     * @return a {@link GHRelease} reference for a specified {@code tag}
+     */
+    public GHRelease createAggregatedRelease(GHRepository repository, String tag, List<GHRelease> releases, boolean override) {
         requireNonNull(repository);
         requireNonNull(tag);
         requireNonNull(releases);
@@ -202,6 +270,25 @@ public final class GitHubConnector {
 
             if (tags.stream().noneMatch(ghTag -> ghTag.getName().equals(tag))) {
                 throw new RuntimeException("Tag '" + tag + "' not found");
+            }
+
+            final var remoteRelease = repository.getReleaseByTagName(tag);
+
+            if (remoteRelease != null) {
+                if (!override) {
+                    throw new RuntimeException("Release for tag '" + tag + "' already exists: use --override to force an override of an existing release");
+                }
+
+                final var normalizedReleases = releases.stream()
+                    .map(release -> new Release(release.getTagName(), release.getName(), release.getBody()))
+                    .collect(Collectors.toList());
+
+                final var release = releaseCreator.createAggregatedRelease(tag, normalizedReleases);
+
+                return remoteRelease.update()
+                    .name(release.getTitle())
+                    .body(release.getBody())
+                    .update();
             }
 
             final var normalizedReleases = releases.stream()
