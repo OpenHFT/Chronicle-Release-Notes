@@ -6,12 +6,18 @@ import java.util.Objects;
 
 public final class Release {
 
+    private final String tag;
     private final String title;
     private final String body;
 
-    public Release(final String title, final String body) {
+    public Release(final String tag, final String title, final String body) {
+        this.tag = requireNonNull(tag);
         this.title = requireNonNull(title);
         this.body = requireNonNull(body);
+    }
+
+    public String getTag() {
+        return tag;
     }
 
     public String getTitle() {
@@ -27,18 +33,19 @@ public final class Release {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         final var release = (Release) o;
-        return title.equals(release.title) && body.equals(release.body);
+        return tag.equals(release.tag) && title.equals(release.title) && body.equals(release.body);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(title, body);
+        return Objects.hash(tag, title, body);
     }
 
     @Override
     public String toString() {
         return "Release{" +
-                "title='" + title + '\'' +
+                "tag='" + tag + '\'' +
+                ", title='" + title + '\'' +
                 ", body='" + body + '\'' +
                 '}';
     }

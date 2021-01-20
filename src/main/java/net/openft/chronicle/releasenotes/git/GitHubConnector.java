@@ -169,7 +169,7 @@ public final class GitHubConnector {
 
             final var release = releaseCreator.createRelease(tag, issues, ignoredLabels);
 
-            return repository.createRelease(release.getTitle())
+            return repository.createRelease(release.getTag())
                 .name(release.getTitle())
                 .body(release.getBody())
                 .create();
@@ -205,12 +205,12 @@ public final class GitHubConnector {
             }
 
             final var normalizedReleases = releases.stream()
-                .map(release -> new Release(release.getName(), release.getBody()))
+                .map(release -> new Release(release.getTagName(), release.getName(), release.getBody()))
                 .collect(Collectors.toList());
 
             final var release = releaseCreator.createAggregatedRelease(tag, normalizedReleases);
 
-            return repository.createRelease(release.getTitle())
+            return repository.createRelease(release.getTag())
                 .name(release.getTitle())
                 .body(release.getBody())
                 .create();

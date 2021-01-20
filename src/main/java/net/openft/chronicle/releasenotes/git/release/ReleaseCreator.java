@@ -58,7 +58,7 @@ public final class ReleaseCreator {
                 .append(NEW_LINE)
         );
 
-        return new Release(tag, body.toString());
+        return new Release(tag, tag, body.toString());
     }
 
     public Release createAggregatedRelease(String tag, List<Release> releases) {
@@ -73,6 +73,6 @@ public final class ReleaseCreator {
                 .append(release.getBody().isEmpty() ? MISSING_CHANGELOG + NEW_LINE : release.getBody())
                 .append(NEW_LINE));
 
-        return new Release(tag, body.toString());
+        return new Release(tag, tag, body.toString());
     }
 }
