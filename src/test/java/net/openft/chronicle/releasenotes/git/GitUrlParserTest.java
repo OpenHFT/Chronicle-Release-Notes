@@ -6,7 +6,7 @@ import net.openft.chronicle.releasenotes.git.GitUrlParser.GitProvider;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-class GitUrlParserTest {
+final class GitUrlParserTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
