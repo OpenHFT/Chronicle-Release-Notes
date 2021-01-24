@@ -2,6 +2,7 @@ package net.openft.chronicle.releasenotes.command;
 
 import net.openft.chronicle.releasenotes.git.Git;
 import net.openft.chronicle.releasenotes.git.GitHubConnector;
+import net.openft.chronicle.releasenotes.git.release.cli.ReleaseSource;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
@@ -21,9 +22,22 @@ public final class ReleaseCommand implements Runnable {
     private String tag;
 
     @Option(
+        names = {"-s", "--source"},
+        description = "Specifies the source used to fetch the issues included in the generated release notes. "
+                    + "Valid source values: ${COMPLETION-CANDIDATES} (Default: ${DEFAULT-VALUE})",
+        defaultValue = "MILESTONE" // TODO: Switch to BRANCH once implemented
+    )
+    private ReleaseSource source;
+
+    @Option(
+        names = {"-b", "--branch"},
+        description = "Specifies a branch that will be used as a reference for the issues included in teh generated release notes"
+    )
+    private String branch;
+
+    @Option(
         names = {"-m", "--milestone"},
-        description = "Specifies a milestone that will be used as a reference for the issues included in the generated release notes",
-        required = true
+        description = "Specifies a milestone that will be used as a reference for the issues included in the generated release notes"
     )
     private String milestone;
 
@@ -55,6 +69,30 @@ public final class ReleaseCommand implements Runnable {
     public void run() {
         final var repository = Git.getCurrentRepository();
         final var github = GitHubConnector.connectWithAccessToken(token);
+
+        switch (source) {
+            case BRANCH:
+                handleBranchSource(repository, github);
+                break;
+            case MILESTONE:
+                handleMilestoneSource(repository, github);
+                break;
+            default:
+                throw new RuntimeException("Invalid source: " + source);
+        }
+    }
+
+    private void handleBranchSource(String repository, GitHubConnector github) {
+        if (branch == null || branch.isEmpty()) {
+            throw new RuntimeException("Using branch source, but no branch was specified: use --branch to specify target branch");
+        }
+        // TODO
+    }
+
+    private void handleMilestoneSource(String repository, GitHubConnector github) {
+        if (milestone == null || milestone.isEmpty()) {
+            throw new RuntimeException("Using milestone source, but no milestone was specified: use --milestone to specify target milestone");
+        }
 
         final var milestoneRef = github.getMilestone(repository, milestone);
         final var closedIssues = github.getClosedMilestoneIssues(milestoneRef);

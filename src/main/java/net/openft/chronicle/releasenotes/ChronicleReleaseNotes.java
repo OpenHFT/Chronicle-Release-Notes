@@ -42,6 +42,8 @@ public final class ChronicleReleaseNotes {
         commandLine.addMixin("commandPreset", new CommandPreset());
         commandLine.getSubcommands().values().forEach(subcommand -> subcommand.addMixin("commandPreset", new CommandPreset()));
         commandLine.registerConverter(ReleaseReference.class, new ReleaseReferenceConverter());
+        commandLine.setCaseInsensitiveEnumValuesAllowed(true);
+        commandLine.setUsageHelpAutoWidth(true);
 
         commandLine.setExecutionExceptionHandler((exception, cmdLine, parseResult) -> {
             cmdLine.getErr().println(cmdLine.getColorScheme().errorText(exception.getMessage()));
