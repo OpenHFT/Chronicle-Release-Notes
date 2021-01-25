@@ -5,15 +5,19 @@ import static java.util.Objects.requireNonNull;
 import net.openft.chronicle.releasenotes.git.release.Release;
 import net.openft.chronicle.releasenotes.git.release.ReleaseCreator;
 import net.openft.chronicle.releasenotes.git.release.cli.ReleaseReference;
+import org.kohsuke.github.GHBranch;
+import org.kohsuke.github.GHCommit;
 import org.kohsuke.github.GHIssue;
 import org.kohsuke.github.GHIssueState;
 import org.kohsuke.github.GHMilestone;
 import org.kohsuke.github.GHRelease;
 import org.kohsuke.github.GHRepository;
+import org.kohsuke.github.GHTag;
 import org.kohsuke.github.GitHub;
 import org.kohsuke.github.GitHubBuilder;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -48,6 +52,105 @@ public final class GitHubConnector {
             return gitHub.getRepository(repository);
         } catch (IOException e) {
             throw new RuntimeException("Repository '" + repository + "' not found");
+        }
+    }
+
+    private GHBranch getBranch(String repository, String branch) {
+        requireNonNull(repository);
+        requireNonNull(branch);
+
+        try {
+            return getRepository(repository).getBranch(branch);
+        } catch (IOException e) {
+            throw new RuntimeException("Branch '" + branch + "' not found in repository '" + repository + "'");
+        }
+    }
+
+    public List<GHCommit> getCommitsForBranch(String repository, String branch, String startTag, String endTag) {
+        requireNonNull(repository);
+        requireNonNull(branch);
+        requireNonNull(startTag);
+        requireNonNull(endTag);
+
+        final var branchRef = getBranch(repository, branch);
+        final var startCommit = getTag(repository, startTag).getCommit();
+        final var endCommit = getTag(repository, endTag).getCommit();
+
+        try {
+            if (startCommit.getCommitDate().before(endCommit.getCommitDate())) {
+                throw new RuntimeException("Start tag '" + startTag + "' has a commit date before end tag '" + endTag + "'");
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to fetch commit date for start/end tag");
+        }
+
+        try {
+            final var commits = branchRef.getOwner().queryCommits()
+                .from(branchRef.getSHA1())
+                .since(endCommit.getCommitDate().getTime())
+                .until(startCommit.getCommitDate().getTime())
+                .list()
+                .toList();
+
+            if (commits.stream().noneMatch(commit -> commit.getSHA1().equals(startCommit.getSHA1()))) {
+                throw new RuntimeException("Tag '" + startTag + "' not found on branch '" + branch + "'");
+            }
+
+            if (commits.stream().noneMatch(commit -> commit.getSHA1().equals(endCommit.getSHA1()))) {
+                throw new RuntimeException("Tag '" + endTag + "' not found on branch '" + branch + "'");
+            }
+
+            return commits;
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to fetch commits for branch '" + branchRef.getName() + "' in repository '" + branchRef.getOwner().getName() + "'");
+        }
+    }
+
+    // TODO: Optimize query logic, currently all tags are being pulled
+    private GHTag getTag(String repository, String tag) {
+        requireNonNull(repository);
+        requireNonNull(tag);
+
+        final var repositoryRef = getRepository(repository);
+
+        try {
+            final var tags = repositoryRef.listTags().toList();
+
+            return tags.stream()
+                .filter(ghTag -> ghTag.getName().equals(tag))
+                .findAny().orElseThrow(() -> new RuntimeException("Tag '" + tag + "' not found in repository '" + repository + "'"));
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to fetch tag '" + tag + "' in repository '" + repository + "'");
+        }
+    }
+
+    public List<GHIssue> extractIssuesFromCommit(GHCommit commit) {
+        try {
+            final var commitMessage = commit.getCommitShortInfo().getMessage()
+                .replaceAll("\n", " ")
+                .replaceAll(" +", " ");
+
+            final var tokens = commitMessage.split(" ");
+
+            return Arrays.stream(tokens)
+                .filter(token -> {
+                    if (!token.startsWith("#")) {
+                        return false;
+                    }
+
+                    final var issueId = token.substring(1);
+
+                    if (!issueId.chars().allMatch(Character::isDigit)) {
+                        return false;
+                    }
+
+                    return issueId.charAt(0) != '0';
+                })
+                .map(token -> Integer.valueOf(token.substring(1)))
+                .map(issueId -> getIssue(commit.getOwner(), issueId))
+                .collect(Collectors.toList());
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to fetch commit info fro commit '" + commit.getSHA1() + "'");
         }
     }
 
@@ -123,6 +226,20 @@ public final class GitHubConnector {
                 .collect(Collectors.toList());
         } catch (IOException e) {
             throw new RuntimeException("Failed to fetch issues");
+        }
+    }
+
+    private GHIssue getIssue(GHRepository repository, int number) {
+        requireNonNull(repository);
+
+        try {
+            return repository.listIssues(GHIssueState.ALL).toList()
+                .stream()
+                .filter(ghIssue -> ghIssue.getNumber() == number)
+                .findAny()
+                .orElseThrow(() -> new RuntimeException("Failed to find issue #" + number + "' in repository '" + repository.getName() + "'"));
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to fetch issues for repository '" + repository.getName() + "'");
         }
     }
 

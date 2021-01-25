@@ -3,10 +3,13 @@ package net.openft.chronicle.releasenotes.command;
 import net.openft.chronicle.releasenotes.git.Git;
 import net.openft.chronicle.releasenotes.git.GitHubConnector;
 import net.openft.chronicle.releasenotes.git.release.cli.ReleaseSource;
+import org.kohsuke.github.GHIssueState;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Command(
     name = "release",
@@ -22,10 +25,16 @@ public final class ReleaseCommand implements Runnable {
     private String tag;
 
     @Option(
+        names = {"-e", "--endTag"},
+        description = ""
+    )
+    private String endTag;
+
+    @Option(
         names = {"-s", "--source"},
         description = "Specifies the source used to fetch the issues included in the generated release notes. "
                     + "Valid source values: ${COMPLETION-CANDIDATES} (Default: ${DEFAULT-VALUE})",
-        defaultValue = "MILESTONE" // TODO: Switch to BRANCH once implemented
+        defaultValue = "BRANCH" // TODO: Switch to BRANCH once implemented
     )
     private ReleaseSource source;
 
@@ -86,7 +95,23 @@ public final class ReleaseCommand implements Runnable {
         if (branch == null || branch.isEmpty()) {
             throw new RuntimeException("Using branch source, but no branch was specified: use --branch to specify target branch");
         }
-        // TODO
+
+        if (endTag == null || endTag.isEmpty()) {
+            // TODO: Find previous tag for branch
+            throw new RuntimeException("Using branch source, but not end tag was specified: use --endTag to specify end tag");
+        }
+
+        final var commits = github.getCommitsForBranch(repository, branch, tag, endTag);
+
+        final var issues = commits.stream()
+            .map(github::extractIssuesFromCommit)
+            .flatMap(Collection::stream)
+            .filter(issue -> issue.getState() == GHIssueState.CLOSED)
+            .collect(Collectors.toList());
+
+        final var release = github.createRelease(github.getRepository(repository), tag, issues, ignoreLabels, override);
+
+        System.out.println("Created release for tag '" + tag + "': " + release.getHtmlUrl().toString());
     }
 
     private void handleMilestoneSource(String repository, GitHubConnector github) {
