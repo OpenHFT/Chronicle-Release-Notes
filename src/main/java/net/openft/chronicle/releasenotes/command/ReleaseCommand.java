@@ -34,7 +34,7 @@ public final class ReleaseCommand implements Runnable {
         names = {"-s", "--source"},
         description = "Specifies the source used to fetch the issues included in the generated release notes. "
                     + "Valid source values: ${COMPLETION-CANDIDATES} (Default: ${DEFAULT-VALUE})",
-        defaultValue = "BRANCH" // TODO: Switch to BRANCH once implemented
+        defaultValue = "BRANCH"
     )
     private ReleaseSource source;
 
