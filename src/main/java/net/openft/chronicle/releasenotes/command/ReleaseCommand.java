@@ -98,7 +98,7 @@ public final class ReleaseCommand implements Runnable {
 
         if (endTag == null || endTag.isEmpty()) {
             // TODO: Find previous tag for branch
-            throw new RuntimeException("Using branch source, but not end tag was specified: use --endTag to specify end tag");
+            throw new RuntimeException("Using branch source, but no end tag was specified: use --endTag to specify end tag");
         }
 
         final var commits = github.getCommitsForBranch(repository, branch, tag, endTag);
