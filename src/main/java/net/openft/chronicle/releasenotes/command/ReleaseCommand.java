@@ -19,14 +19,15 @@ public final class ReleaseCommand implements Runnable {
 
     @Option(
         names = {"-t", "--tag"},
-        description = "Specifies a tag for which the release notes will get generated",
+        description = "Specifies a tag for which the release notes will get generated. "
+                + "When using source BRANCH, the tag is used as a start point for the scanned commits",
         required = true
     )
     private String tag;
 
     @Option(
         names = {"-e", "--endTag"},
-        description = ""
+        description = "Specifies the ending tag for the scanned commits when using source BRANCH"
     )
     private String endTag;
 
