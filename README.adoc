@@ -83,8 +83,11 @@ If everything was created correctly, you should see a version number printed out
 [options="header"]
 |===
 ^| Option ^| Presence ^| Description
-| **tag** | required | Specifies a tag for which the release notes will get generated
-| **milestone** | required | Specifies a milestone that will be used as a reference for the issues included in the generated release notes
+| **tag** | required | Specifies a tag for which the release notes will get generated. When using source BRANCH, the tag is used as a start point for the scanned commits
+| **endTag** | optional | Specifies the ending tag for the scanned commits when using source BRANCH
+| **source** | optional | Specifies the source used to fetch the issues included in the generated release notes. Valid source values: BRANCH, MILESTONE (Default: BRANCH)
+| **branch** | required (source BRANCH) | Specifies a branch that will be used as a reference for the issues included in the generated release notes
+| **milestone** | required (source MILESTONE) | Specifies a milestone that will be used as a reference for the issues included in the generated release notes
 | **ignoreLabels** | optional | Specifies which issues to ignore based on the provided label names
 | **token** | required | Specifies a GitHub personal access token used to gain access to the GitHub API
 |===
