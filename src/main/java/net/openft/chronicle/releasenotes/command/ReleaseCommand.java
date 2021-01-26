@@ -41,7 +41,7 @@ public final class ReleaseCommand implements Runnable {
 
     @Option(
         names = {"-b", "--branch"},
-        description = "Specifies a branch that will be used as a reference for the issues included in teh generated release notes"
+        description = "Specifies a branch that will be used as a reference for the issues included in the generated release notes"
     )
     private String branch;
 
