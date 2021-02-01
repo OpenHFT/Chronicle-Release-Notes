@@ -1,12 +1,15 @@
 package net.openft.chronicle.releasenotes.command;
 
+import static java.util.stream.Collectors.groupingBy;
+import static java.util.stream.Collectors.mapping;
+
 import net.openft.chronicle.releasenotes.git.Git;
 import net.openft.chronicle.releasenotes.git.GitHubConnector;
 import net.openft.chronicle.releasenotes.git.release.cli.ReleaseReference;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
-import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Command(
@@ -28,7 +31,7 @@ public final class AggregateCommand implements Runnable {
         split = ",",
         arity = "0..*"
     )
-    private List<ReleaseReference> releases;
+    private Set<ReleaseReference> releases;
 
     @Option(
         names = {"-o", "--override"},
@@ -51,10 +54,11 @@ public final class AggregateCommand implements Runnable {
         final var repository = Git.getCurrentRepository();
         final var github = GitHubConnector.connectWithAccessToken(token);
 
-        final var repositoryRef = github.getRepository(repository);
-        final var releaseRef = releases.stream().distinct().map(github::getRelease).collect(Collectors.toList());
+        final var releaseRef = releases.stream()
+            .distinct()
+            .collect(groupingBy(ReleaseReference::getRepository, mapping(ReleaseReference::getRelease, Collectors.toSet())));
 
-        final var release = github.createAggregatedRelease(repositoryRef, tag, releaseRef, override);
+        final var release = github.createAggregatedRelease(repository, tag, releaseRef, override);
 
         System.out.println("Created release for tag '" + tag + "': " + release.getHtmlUrl().toString());
     }

@@ -3,13 +3,10 @@ package net.openft.chronicle.releasenotes.command;
 import net.openft.chronicle.releasenotes.git.Git;
 import net.openft.chronicle.releasenotes.git.GitHubConnector;
 import net.openft.chronicle.releasenotes.git.release.cli.ReleaseSource;
-import org.kohsuke.github.GHIssueState;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Set;
 
 @Command(
     name = "release",
@@ -57,7 +54,7 @@ public final class ReleaseCommand implements Runnable {
         split = ",",
         arity = "1..*"
     )
-    private List<String> ignoreLabels;
+    private Set<String> ignoreLabels;
 
     @Option(
         names = {"-o", "--override"},
@@ -102,15 +99,7 @@ public final class ReleaseCommand implements Runnable {
             throw new RuntimeException("Using branch source, but no end tag was specified: use --endTag to specify end tag");
         }
 
-        final var commits = github.getCommitsForBranch(repository, branch, tag, endTag);
-
-        final var issues = commits.stream()
-            .map(github::extractIssuesFromCommit)
-            .flatMap(Collection::stream)
-            .filter(issue -> issue.getState() == GHIssueState.CLOSED)
-            .collect(Collectors.toList());
-
-        final var release = github.createRelease(github.getRepository(repository), tag, issues, ignoreLabels, override);
+        final var release = github.createReleaseFromBranch(repository, tag, endTag, branch, ignoreLabels, override);
 
         System.out.println("Created release for tag '" + tag + "': " + release.getHtmlUrl().toString());
     }
@@ -120,10 +109,7 @@ public final class ReleaseCommand implements Runnable {
             throw new RuntimeException("Using milestone source, but no milestone was specified: use --milestone to specify target milestone");
         }
 
-        final var milestoneRef = github.getMilestone(repository, milestone);
-        final var closedIssues = github.getClosedMilestoneIssues(milestoneRef);
-
-        final var release = github.createRelease(milestoneRef.getOwner(), tag, closedIssues, ignoreLabels, override);
+        final var release = github.createReleaseFromMilestone(repository, tag, milestone, ignoreLabels, override);
 
         System.out.println("Created release for tag '" + tag + "': " + release.getHtmlUrl().toString());
     }

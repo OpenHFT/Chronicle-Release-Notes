@@ -1,10 +1,10 @@
 package net.openft.chronicle.releasenotes.git;
 
 import static java.util.Objects.requireNonNull;
+import static java.util.stream.Collectors.toSet;
 
 import net.openft.chronicle.releasenotes.git.release.Release;
 import net.openft.chronicle.releasenotes.git.release.ReleaseCreator;
-import net.openft.chronicle.releasenotes.git.release.cli.ReleaseReference;
 import org.kohsuke.github.GHBranch;
 import org.kohsuke.github.GHCommit;
 import org.kohsuke.github.GHIssue;
@@ -18,8 +18,14 @@ import org.kohsuke.github.GitHubBuilder;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.List;
+import java.util.Collection;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 /**
  * @author Mislav Milicevic
@@ -30,234 +36,15 @@ public final class GitHubConnector {
     private final ReleaseCreator releaseCreator;
 
     private GitHubConnector(String token) throws IOException {
-        this.gitHub = new GitHubBuilder().withOAuthToken(requireNonNull(token)).build();
+        this.gitHub = new GitHubBuilder()
+            .withOAuthToken(requireNonNull(token))
+            .build();
         this.releaseCreator = ReleaseCreator.getInstance();
     }
 
     /**
-     * Returns a {@link GHRepository} reference based on the provided
-     * {@code repository} name. The provided repository name must
-     * be in the format {@code owner/repository}.
-     *
-     * A {@link RuntimeException} is thrown if the repository is not found.
-     *
-     * @param repository name
-     * @return a {@link GHRepository} reference based on the provided
-     *         {@code repository} name
-     */
-    public GHRepository getRepository(String repository) {
-        requireNonNull(repository);
-
-        try {
-            return gitHub.getRepository(repository);
-        } catch (IOException e) {
-            throw new RuntimeException("Repository '" + repository + "' not found");
-        }
-    }
-
-    private GHBranch getBranch(String repository, String branch) {
-        requireNonNull(repository);
-        requireNonNull(branch);
-
-        try {
-            return getRepository(repository).getBranch(branch);
-        } catch (IOException e) {
-            throw new RuntimeException("Branch '" + branch + "' not found in repository '" + repository + "'");
-        }
-    }
-
-    public List<GHCommit> getCommitsForBranch(String repository, String branch, String startTag, String endTag) {
-        requireNonNull(repository);
-        requireNonNull(branch);
-        requireNonNull(startTag);
-        requireNonNull(endTag);
-
-        final var branchRef = getBranch(repository, branch);
-        final var startCommit = getTag(repository, startTag).getCommit();
-        final var endCommit = getTag(repository, endTag).getCommit();
-
-        try {
-            if (startCommit.getCommitDate().before(endCommit.getCommitDate())) {
-                throw new RuntimeException("Start tag '" + startTag + "' has a commit date before end tag '" + endTag + "'");
-            }
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to fetch commit date for start/end tag");
-        }
-
-        try {
-            final var commits = branchRef.getOwner().queryCommits()
-                .from(branchRef.getSHA1())
-                .since(endCommit.getCommitDate().getTime())
-                .until(startCommit.getCommitDate().getTime())
-                .list()
-                .toList();
-
-            if (commits.stream().noneMatch(commit -> commit.getSHA1().equals(startCommit.getSHA1()))) {
-                throw new RuntimeException("Tag '" + startTag + "' not found on branch '" + branch + "'");
-            }
-
-            if (commits.stream().noneMatch(commit -> commit.getSHA1().equals(endCommit.getSHA1()))) {
-                throw new RuntimeException("Tag '" + endTag + "' not found on branch '" + branch + "'");
-            }
-
-            return commits;
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to fetch commits for branch '" + branchRef.getName() + "' in repository '" + branchRef.getOwner().getName() + "'");
-        }
-    }
-
-    // TODO: Optimize query logic, currently all tags are being pulled
-    private GHTag getTag(String repository, String tag) {
-        requireNonNull(repository);
-        requireNonNull(tag);
-
-        final var repositoryRef = getRepository(repository);
-
-        try {
-            final var tags = repositoryRef.listTags().toList();
-
-            return tags.stream()
-                .filter(ghTag -> ghTag.getName().equals(tag))
-                .findAny().orElseThrow(() -> new RuntimeException("Tag '" + tag + "' not found in repository '" + repository + "'"));
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to fetch tag '" + tag + "' in repository '" + repository + "'");
-        }
-    }
-
-    public List<GHIssue> extractIssuesFromCommit(GHCommit commit) {
-        try {
-            final var commitMessage = commit.getCommitShortInfo().getMessage()
-                .replaceAll("\n", " ")
-                .replaceAll(" +", " ");
-
-            final var tokens = commitMessage.split(" ");
-
-            return Arrays.stream(tokens)
-                .filter(token -> {
-                    if (!token.startsWith("#")) {
-                        return false;
-                    }
-
-                    final var issueId = token.substring(1);
-
-                    if (!issueId.chars().allMatch(Character::isDigit)) {
-                        return false;
-                    }
-
-                    return issueId.charAt(0) != '0';
-                })
-                .map(token -> Integer.valueOf(token.substring(1)))
-                .map(issueId -> getIssue(commit.getOwner(), issueId))
-                .collect(Collectors.toList());
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to fetch commit info fro commit '" + commit.getSHA1() + "'");
-        }
-    }
-
-    /**
-     * Returns a {@link GHMilestone} reference based on the provided
-     * {@code repository} and {@code milestone} names. The provided
-     * repository name must be in the format {@code owner/repository}.
-     *
-     * A {@link RuntimeException} is thrown if the milestone is not found.
-     *
-     * @param repository name
-     * @param milestone name
-     * @return a {@link GHMilestone} reference based on the provided
-     *         {@code repository} and {@code milestone} names
-     */
-    public GHMilestone getMilestone(String repository, String milestone) {
-        requireNonNull(repository);
-        requireNonNull(milestone);
-
-        try {
-            return getRepository(repository).listMilestones(GHIssueState.ALL).toList()
-                .stream()
-                .filter(ghMilestone -> ghMilestone.getTitle().equals(milestone))
-                .findAny()
-                .orElseThrow(() -> new RuntimeException("Milestone '" + milestone + "' not found"));
-        } catch (IOException e) {
-            throw new RuntimeException("Milestone '" + milestone + "' not found");
-        }
-    }
-
-    /**
-     * Returns a list of {@link GHIssue} that are contained in the
-     * provided {@code milestone}.
-     *
-     * A {@link RuntimeException} is thrown if the issues could not
-     * be fetched.
-     *
-     * @param milestone reference
-     * @return a list of {@link GHIssue} that are contained in the
-     *         provided {@code milestone}
-     */
-    public List<GHIssue> getMilestoneIssues(GHMilestone milestone) {
-        requireNonNull(milestone);
-
-        return getMilestoneIssues(milestone, GHIssueState.ALL);
-    }
-
-    /**
-     * Returns a list of closed {@link GHIssue} that are contained in
-     * the provided {@code milestone}.
-     *
-     * A {@link RuntimeException} is thrown if the issues could not
-     * be fetched.
-     *
-     * @param milestone reference
-     * @return a list of closed {@link GHIssue} that are contained in
-     *         the provided {@code milestone}
-     */
-    public List<GHIssue> getClosedMilestoneIssues(GHMilestone milestone) {
-        requireNonNull(milestone);
-
-        return getMilestoneIssues(milestone, GHIssueState.CLOSED);
-    }
-
-    private List<GHIssue> getMilestoneIssues(GHMilestone milestone, GHIssueState issueState) {
-        requireNonNull(milestone);
-        requireNonNull(issueState);
-
-        try {
-            return milestone.getOwner().listIssues(issueState).toList()
-                .stream()
-                .filter(ghIssue -> ghIssue.getMilestone() != null && ghIssue.getMilestone().getNumber() == milestone.getNumber())
-                .collect(Collectors.toList());
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to fetch issues");
-        }
-    }
-
-    private GHIssue getIssue(GHRepository repository, int number) {
-        requireNonNull(repository);
-
-        try {
-            return repository.listIssues(GHIssueState.ALL).toList()
-                .stream()
-                .filter(ghIssue -> ghIssue.getNumber() == number)
-                .findAny()
-                .orElseThrow(() -> new RuntimeException("Failed to find issue #" + number + "' in repository '" + repository.getName() + "'"));
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to fetch issues for repository '" + repository.getName() + "'");
-        }
-    }
-
-    public GHRelease getRelease(ReleaseReference releaseReference) {
-        requireNonNull(releaseReference);
-
-        final var repository = getRepository(releaseReference.getRepository());
-
-        try {
-            return repository.getReleaseByTagName(releaseReference.getRelease());
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to fetch release for tag '" + releaseReference.getRelease() + "'");
-        }
-    }
-
-    /**
      * Creates and returns a {@link GHRelease} reference for a specified
-     * {@code tag}. The provided {@code milestone} is used as a reference
+     * {@code tag}. The provided {@code branch} is used as a reference
      * to generate the contents of the release notes associated with
      * this release.
      *
@@ -265,17 +52,30 @@ public final class GitHubConnector {
      * all of the issues which contain one of the provided labels are
      * ignored in the release note generation process.
      *
+     * In case a release for the specified tag already exists and {@code override}
+     * is {@code true}, the existing release will be updated with the contents
+     * of the newly generated release. Otherwise, a {@link RuntimeException}
+     * will be thrown.
+     *
      * A {@link RuntimeException} is thrown if the provided {@code tag}
      * does not exist or if the release creation fails.
      *
      * @param repository reference
      * @param tag name
-     * @param issues to include in the release
+     * @param branch reference
      * @param ignoredLabels a list of ignored labels
+     * @param override an existing release
      * @return a {@link GHRelease} reference for a specified {@code tag}
      */
-    public GHRelease createRelease(GHRepository repository, String tag, List<GHIssue> issues, List<String> ignoredLabels) {
-        return createRelease(repository, tag, issues, ignoredLabels, false);
+    public GHRelease createReleaseFromBranch(String repository, String tag, String endTag, String branch, Set<String> ignoredLabels, boolean override) {
+        requireNonNull(repository);
+        requireNonNull(tag);
+        requireNonNull(endTag);
+        requireNonNull(branch);
+
+        final var repositoryRef = getRepository(repository);
+
+        return createRelease(repositoryRef, tag, () -> getIssuesForBranch(repositoryRef, branch, tag, endTag), ignoredLabels, override);
     }
 
     /**
@@ -298,18 +98,28 @@ public final class GitHubConnector {
      *
      * @param repository reference
      * @param tag name
-     * @param issues to include in the release
+     * @param milestone issues to include in the release
      * @param ignoredLabels a list of ignored labels
      * @param override an existing release
      * @return a {@link GHRelease} reference for a specified {@code tag}
      */
-    public GHRelease createRelease(GHRepository repository, String tag, List<GHIssue> issues, List<String> ignoredLabels, boolean override) {
+    public GHRelease createReleaseFromMilestone(String repository, String tag, String milestone, Set<String> ignoredLabels, boolean override) {
         requireNonNull(repository);
         requireNonNull(tag);
-        requireNonNull(issues);
+        requireNonNull(milestone);
+
+        final var repositoryRef = getRepository(repository);
+
+        return createRelease(repositoryRef, tag, () -> getClosedMilestoneIssues(repositoryRef, milestone), ignoredLabels, override);
+    }
+
+    private GHRelease createRelease(GHRepository repository, String tag, Supplier<Set<GHIssue>> issueSupplier, Set<String> ignoredLabels, boolean override) {
+        requireNonNull(repository);
+        requireNonNull(tag);
+        requireNonNull(issueSupplier);
 
         try {
-            if (repository.listTags().toList().stream().noneMatch(ghTag -> ghTag.getName().equals(tag))) {
+            if (!checkTagExists(repository, tag)) {
                 throw new RuntimeException("Tag '" + tag + "' not found");
             }
 
@@ -320,6 +130,8 @@ public final class GitHubConnector {
                     throw new RuntimeException("Release for tag '" + tag + "' already exists: use --override to force an override of an existing release");
                 }
 
+                final var issues = issueSupplier.get();
+
                 final var release = releaseCreator.createRelease(tag, issues, ignoredLabels);
 
                 return remoteRelease.update()
@@ -327,6 +139,8 @@ public final class GitHubConnector {
                     .body(release.getBody())
                     .update();
             }
+
+            final var issues = issueSupplier.get();
 
             final var release = releaseCreator.createRelease(tag, issues, ignoredLabels);
 
@@ -353,7 +167,7 @@ public final class GitHubConnector {
      * @param releases to include in the aggregated release
      * @return a {@link GHRelease} reference for a specified {@code tag}
      */
-    public GHRelease createAggregatedRelease(GHRepository repository, String tag, List<GHRelease> releases) {
+    public GHRelease createAggregatedRelease(String repository, String tag, Map<String, Set<String>> releases) {
         return createAggregatedRelease(repository, tag, releases, false);
     }
 
@@ -377,28 +191,35 @@ public final class GitHubConnector {
      * @param override an existing release
      * @return a {@link GHRelease} reference for a specified {@code tag}
      */
-    public GHRelease createAggregatedRelease(GHRepository repository, String tag, List<GHRelease> releases, boolean override) {
+    public GHRelease createAggregatedRelease(String repository, String tag, Map<String, Set<String>> releases, boolean override) {
         requireNonNull(repository);
         requireNonNull(tag);
         requireNonNull(releases);
 
-        try {
-            final var tags = repository.listTags().toList();
+        final var repositoryRef = getRepository(repository);
 
-            if (tags.stream().noneMatch(ghTag -> ghTag.getName().equals(tag))) {
+        try {
+            if (!checkTagExists(repositoryRef, tag)) {
                 throw new RuntimeException("Tag '" + tag + "' not found");
             }
 
-            final var remoteRelease = repository.getReleaseByTagName(tag);
+            final var remoteRelease = repositoryRef.getReleaseByTagName(tag);
+
+            final var sourceReleases = releases.entrySet().stream()
+                .map(entry -> {
+                    final var sourceRepository = getRepository(entry.getKey());
+                    return entry.getValue().stream().map(release -> getRelease(sourceRepository, release)).collect(toSet());
+                })
+                .flatMap(Collection::stream).collect(toSet());
 
             if (remoteRelease != null) {
                 if (!override) {
                     throw new RuntimeException("Release for tag '" + tag + "' already exists: use --override to force an override of an existing release");
                 }
 
-                final var normalizedReleases = releases.stream()
+                final var normalizedReleases = sourceReleases.stream()
                     .map(release -> new Release(release.getTagName(), release.getName(), release.getBody()))
-                    .collect(Collectors.toList());
+                    .collect(toSet());
 
                 final var release = releaseCreator.createAggregatedRelease(tag, normalizedReleases);
 
@@ -408,13 +229,13 @@ public final class GitHubConnector {
                     .update();
             }
 
-            final var normalizedReleases = releases.stream()
+            final var normalizedReleases = sourceReleases.stream()
                 .map(release -> new Release(release.getTagName(), release.getName(), release.getBody()))
-                .collect(Collectors.toList());
+                .collect(toSet());
 
             final var release = releaseCreator.createAggregatedRelease(tag, normalizedReleases);
 
-            return repository.createRelease(release.getTag())
+            return repositoryRef.createRelease(release.getTag())
                 .name(release.getTitle())
                 .body(release.getBody())
                 .create();
@@ -437,23 +258,256 @@ public final class GitHubConnector {
      * @param toMilestone destination milestones
      * @param ignoredLabels a list of ignored labels
      */
-    public void migrateIssues(List<GHMilestone> fromMilestones, GHMilestone toMilestone, List<String> ignoredLabels) {
+    public void migrateIssues(String repository, Set<String> fromMilestones, String toMilestone, Set<String> ignoredLabels) {
+        requireNonNull(repository);
         requireNonNull(fromMilestones);
         requireNonNull(toMilestone);
 
-        var stream = fromMilestones.stream().flatMap(milestone -> getMilestoneIssues(milestone).stream());
+        final var repositoryRef = getRepository(repository);
+        final var milestones = getMilestones(repositoryRef, fromMilestones);
+        final var toMilestoneRef = getMilestone(repositoryRef, toMilestone);
 
-        if (ignoredLabels != null) {
-            stream = stream.filter(issue -> issue.getLabels().stream().noneMatch(ghLabel -> ignoredLabels.contains(ghLabel.getName())));
-        }
+        final var issues = getMilestoneIssues(repositoryRef, (Set<GHMilestone>) milestones.values(), ignoredLabels);
 
-        stream.forEach(ghIssue -> {
+        issues.forEach(ghIssue -> {
             try {
-                ghIssue.setMilestone(toMilestone);
+                ghIssue.setMilestone(toMilestoneRef);
             } catch (IOException e) {
-                throw new RuntimeException("Failed to assign issue #" + ghIssue.getNumber() + " to milestone '" + toMilestone.getTitle() + "'");
+                throw new RuntimeException("Failed to assign issue #" + ghIssue.getNumber() + " to milestone '" + toMilestone + "'");
             }
         });
+    }
+
+    private GHRelease getRelease(GHRepository repository, String tag) {
+        requireNonNull(repository);
+        requireNonNull(tag);
+
+        try {
+            return repository.getReleaseByTagName(tag);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to find release for tag '" + tag + "' in repository '" + repository.getName() + "'");
+        }
+    }
+
+    private boolean checkTagExists(GHRepository repository, String tag) {
+        requireNonNull(repository);
+        requireNonNull(tag);
+
+        try {
+            return stream(repository.listTags())
+                .anyMatch(ghTag -> ghTag.getName().equals(tag));
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    private GHMilestone getMilestone(GHRepository repository, String milestone) {
+        requireNonNull(repository);
+        requireNonNull(milestone);
+
+        return stream(repository.listMilestones(GHIssueState.ALL))
+            .filter(ghMilestone -> ghMilestone.getTitle().equals(milestone))
+            .findAny()
+            .orElseThrow(() -> new RuntimeException("Milestone '" + milestone + "' not found"));
+    }
+
+    private Map<String, GHMilestone> getMilestones(GHRepository repository, Set<String> milestones) {
+        requireNonNull(repository);
+        requireNonNull(milestones);
+
+        final var collectedMilestones = stream(repository.listMilestones(GHIssueState.ALL))
+            .filter(milestone -> milestones.contains(milestone.getTitle()))
+            .collect(Collectors.toMap(GHMilestone::getTitle, Function.identity()));
+
+        if (collectedMilestones.size() == milestones.size()) {
+            return collectedMilestones;
+        }
+
+        final var missingMilestones = milestones.stream()
+            .filter(tag -> !collectedMilestones.containsKey(tag))
+            .collect(Collectors.joining(", "));
+
+        throw new RuntimeException("Failed to find milestones(s) [" + missingMilestones + "] in repository '" + repository.getFullName() + "'");
+    }
+
+    private Set<GHIssue> getClosedMilestoneIssues(GHRepository repository, String milestone) {
+        requireNonNull(repository);
+        requireNonNull(milestone);
+
+        final var milestoneRef = getMilestone(repository, milestone);
+
+        return stream(repository.listIssues(GHIssueState.CLOSED))
+            .filter(ghIssue -> ghIssue.getMilestone() != null && ghIssue.getMilestone().getNumber() == milestoneRef.getNumber())
+            .collect(toSet());
+    }
+
+    private GHRepository getRepository(String repository) {
+        requireNonNull(repository);
+
+        try {
+            return gitHub.getRepository(repository);
+        } catch (IOException e) {
+            throw new RuntimeException("Repository '" + repository + "' not found");
+        }
+    }
+
+    private GHBranch getBranch(GHRepository repository, String branch) {
+        requireNonNull(repository);
+        requireNonNull(branch);
+
+        try {
+            return repository.getBranch(branch);
+        } catch (IOException e) {
+            throw new RuntimeException("Branch '" + branch + "' not found in repository '" + repository + "'");
+        }
+    }
+
+    private Set<GHIssue> getIssuesForBranch(GHRepository repository, String branch, String startTag, String endTag) {
+        requireNonNull(repository);
+        requireNonNull(branch);
+        requireNonNull(startTag);
+        requireNonNull(endTag);
+
+        final var commits = getCommitsForBranch(repository, branch, startTag, endTag);
+        final var issueIds = extractIssueIdsFromCommits(commits);
+
+        return getIssuesFromIds(repository, issueIds);
+    }
+
+    private Set<GHCommit> getCommitsForBranch(GHRepository repository, String branch, String startTag, String endTag) {
+        requireNonNull(repository);
+        requireNonNull(branch);
+        requireNonNull(startTag);
+        requireNonNull(endTag);
+
+        final var branchRef = getBranch(repository, branch);
+        final var tags = getTags(repository, startTag, endTag);
+
+        final var startCommit = tags.get(startTag).getCommit();
+        final var endCommit = tags.get(endTag).getCommit();
+
+        try {
+            if (startCommit.getCommitDate().before(endCommit.getCommitDate())) {
+                throw new RuntimeException("Start tag '" + startTag + "' has a commit date before end tag '" + endTag + "'");
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to fetch commit date for start/end tag");
+        }
+
+        try {
+            final var commits = branchRef.getOwner().queryCommits()
+                .from(branchRef.getSHA1())
+                .since(endCommit.getCommitDate().getTime())
+                .until(startCommit.getCommitDate().getTime())
+                .list();
+
+            if (stream(commits).noneMatch(commit -> commit.getSHA1().equals(startCommit.getSHA1()))) {
+                throw new RuntimeException("Tag '" + startTag + "' not found on branch '" + branch + "'");
+            }
+
+            if (stream(commits).noneMatch(commit -> commit.getSHA1().equals(endCommit.getSHA1()))) {
+                throw new RuntimeException("Tag '" + endTag + "' not found on branch '" + branch + "'");
+            }
+
+            return commits.toSet();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to fetch commits for branch '" + branchRef.getName() + "' in repository '" + branchRef.getOwner().getName() + "'");
+        }
+    }
+
+    private Map<String, GHTag> getTags(GHRepository repository, String... tags) {
+        requireNonNull(repository);
+        requireNonNull(tags);
+
+        final var tagSet = Set.of(tags);
+
+        try {
+            final var collectedTags = stream(repository.listTags())
+                .filter(ghTag -> tagSet.contains(ghTag.getName()))
+                .collect(Collectors.toMap(GHTag::getName, Function.identity()));
+
+            if (collectedTags.size() == tags.length) {
+                return collectedTags;
+            }
+
+            final var missingTags = Arrays.stream(tags)
+                .filter(tag -> !collectedTags.containsKey(tag))
+                .collect(Collectors.joining(", "));
+
+            throw new RuntimeException("Failed to find tag(s) [" + missingTags + "] in repository '" + repository.getFullName() + "'");
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to fetch tags for repository '" + repository.getFullName() + "'");
+        }
+    }
+
+    private Set<Integer> extractIssueIdsFromCommits(Set<GHCommit> commits) {
+        return commits.stream()
+            .map(this::extractIssueIdsFromCommit)
+            .flatMap(Collection::stream)
+            .collect(toSet());
+    }
+
+    private Set<Integer> extractIssueIdsFromCommit(GHCommit commit) {
+        requireNonNull(commit);
+
+        try {
+            final var commitMessage = commit.getCommitShortInfo().getMessage()
+                .replaceAll("\n", " ")
+                .replaceAll(" +", " ");
+
+            final var tokens = commitMessage.split(" ");
+
+            return Arrays.stream(tokens)
+                .filter(this::isIssueToken)
+                .map(token -> Integer.valueOf(token.substring(1)))
+                .collect(toSet());
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to fetch commit info for commit '" + commit.getSHA1() + "'");
+        }
+    }
+
+    private boolean isIssueToken(String token) {
+        requireNonNull(token);
+
+        if (!token.startsWith("#")) {
+            return false;
+        }
+
+        final var issueId = token.substring(1);
+
+        if (!issueId.chars().allMatch(Character::isDigit)) {
+            return false;
+        }
+
+        return issueId.charAt(0) != '0';
+    }
+
+    private Set<GHIssue> getMilestoneIssues(GHRepository repository, Set<GHMilestone> milestones, Set<String> ignoredLabels) {
+        requireNonNull(repository);
+        requireNonNull(milestones);
+
+        final var milestoneNumbers = milestones.stream().map(GHMilestone::getNumber).collect(toSet());
+
+        var stream = stream(repository.listIssues(GHIssueState.ALL))
+            .filter(issue -> issue.getMilestone() != null && milestoneNumbers.contains(issue.getMilestone().getNumber()));
+
+        if (ignoredLabels != null) {
+            stream = stream.filter(issue -> issue.getLabels().stream().noneMatch(label -> ignoredLabels.contains(label.getName())));
+        }
+
+        return stream.collect(toSet());
+    }
+
+    private Set<GHIssue> getIssuesFromIds(GHRepository repository, Set<Integer> ids) {
+        requireNonNull(repository);
+
+        return stream(repository.listIssues(GHIssueState.ALL))
+            .filter(ghIssue -> ids.contains(ghIssue.getNumber()))
+            .collect(toSet());
+    }
+
+    private <T> Stream<T> stream(Iterable<T> iterable) {
+        return StreamSupport.stream(iterable.spliterator(), false);
     }
 
     /**

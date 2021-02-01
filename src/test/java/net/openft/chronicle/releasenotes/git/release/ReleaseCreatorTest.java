@@ -1,7 +1,6 @@
 package net.openft.chronicle.releasenotes.git.release;
 
 import static java.util.Objects.requireNonNull;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -13,14 +12,15 @@ import org.junit.jupiter.api.Test;
 import org.kohsuke.github.GHIssue;
 import org.kohsuke.github.GHLabel;
 
-import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 final class ReleaseCreatorTest {
 
-    private static final List<Issue> ISSUES = new ArrayList<>();
+    private static final Set<Issue> ISSUES = new HashSet<>();
 
     private final ReleaseCreator releaseCreator = ReleaseCreator.getInstance();
 
@@ -36,8 +36,8 @@ final class ReleaseCreatorTest {
     @Test
     void createRelease() {
         final var tag = "1.0.0";
-        final var issues = ISSUES.stream().map(this::mockIssue).collect(Collectors.toList());
-        final var ignoredLabels = Collections.singletonList("wontfix");
+        final var issues = ISSUES.stream().map(this::mockIssue).collect(Collectors.toSet());
+        final var ignoredLabels = Collections.singleton("wontfix");
 
         final var release = releaseCreator.createRelease(tag, issues);
 
@@ -53,13 +53,12 @@ final class ReleaseCreatorTest {
 
         assertNotEquals(release, filteredRelease);
         assertNotEquals(release.getBody(), filteredRelease.getBody());
-        assertEquals(release.getBody().substring(0, filteredRelease.getBody().length()), filteredRelease.getBody());
     }
 
     @Test
     void createAggregatedRelease() {
         final var tag = "1.0.0";
-        final var issues = ISSUES.stream().map(this::mockIssue).collect(Collectors.toList());
+        final var issues = ISSUES.stream().map(this::mockIssue).collect(Collectors.toSet());
 
         final var release = releaseCreator.createRelease(tag, issues);
 
@@ -68,7 +67,7 @@ final class ReleaseCreatorTest {
         final var noChangeRelease = new Release("1.1.0", "1.1.0", "");
 
         final var aggregatedRelease = releaseCreator
-                .createAggregatedRelease("1.2.0", List.of(release, noChangeRelease));
+                .createAggregatedRelease("1.2.0", Set.of(release, noChangeRelease));
 
         printRelease(aggregatedRelease, "Aggregated Release");
 

@@ -5,8 +5,7 @@ import net.openft.chronicle.releasenotes.git.GitHubConnector;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Set;
 
 @Command(
     name = "migrate",
@@ -21,7 +20,7 @@ public final class MigrateCommand implements Runnable {
         split = ",",
         arity = "1..*"
     )
-    private List<String> from;
+    private Set<String> from;
 
     @Option(
         names = {"-t", "--to"},
@@ -36,7 +35,7 @@ public final class MigrateCommand implements Runnable {
         split = ",",
         arity = "1..*"
     )
-    private List<String> ignoreLabels;
+    private Set<String> ignoreLabels;
 
     @Option(
         names = {"-T", "--token"},
@@ -52,9 +51,6 @@ public final class MigrateCommand implements Runnable {
         final var repository = Git.getCurrentRepository();
         final var gitHub = GitHubConnector.connectWithAccessToken(token);
 
-        final var fromMilestones = from.stream().map(x -> gitHub.getMilestone(repository, x)).collect(Collectors.toList());
-        final var toMilestone = gitHub.getMilestone(repository, to);
-
-        gitHub.migrateIssues(fromMilestones, toMilestone, ignoreLabels);
+        gitHub.migrateIssues(repository, from, to, ignoreLabels);
     }
 }
