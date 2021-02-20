@@ -4,17 +4,28 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>net.openhft</groupId>
-    <artifactId>chronicle-release-notes</artifactId>
+    <parent>
+        <groupId>net.openhft</groupId>
+        <artifactId>java-parent-pom</artifactId>
+        <version>1.1.24</version>
+        <relativePath />
+    </parent>
+
+    <artifactId>chronicle-release-notes-parent</artifactId>
     <version>1.0.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <name>Chronicle Release Notes</name>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.build.resourceEncoding>UTF-8</project.build.resourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
-        <maven.compiler.source>11</maven.compiler.source>
-        <maven.compiler.target>11</maven.compiler.target>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+
+        <chronicle-release-notes.version>${project.parent.version}</chronicle-release-notes.version>
 
         <junit.jupiter.version>5.7.0</junit.jupiter.version>
         <junit.platform.provider.version>1.7.0</junit.platform.provider.version>
@@ -22,29 +33,17 @@
 
         <picocli.version>4.5.2</picocli.version>
 
-        <graalvm.version>20.3.0</graalvm.version>
+        <graalvm.version>21.0.0</graalvm.version>
     </properties>
+
+    <modules>
+        <module>cli</module>
+        <module>connector</module>
+        <module>creator</module>
+    </modules>
 
     <dependencyManagement>
         <dependencies>
-            <dependency>
-                <groupId>info.picocli</groupId>
-                <artifactId>picocli</artifactId>
-                <version>${picocli.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>org.eclipse.jgit</groupId>
-                <artifactId>org.eclipse.jgit</artifactId>
-                <version>5.10.0.202012080955-r</version>
-            </dependency>
-
-            <dependency>
-                <groupId>org.kohsuke</groupId>
-                <artifactId>github-api</artifactId>
-                <version>1.117</version>
-            </dependency>
-
             <dependency>
                 <groupId>org.junit.jupiter</groupId>
                 <artifactId>junit-jupiter-engine</artifactId>
@@ -97,21 +96,6 @@
     </dependencyManagement>
 
     <dependencies>
-        <dependency>
-            <groupId>info.picocli</groupId>
-            <artifactId>picocli</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.eclipse.jgit</groupId>
-            <artifactId>org.eclipse.jgit</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.kohsuke</groupId>
-            <artifactId>github-api</artifactId>
-        </dependency>
-
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>
@@ -194,44 +178,18 @@
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-jar-plugin</artifactId>
+                <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
-                    <archive>
-                        <manifest>
-                            <addClasspath>true</addClasspath>
-                            <classpathPrefix>lib/</classpathPrefix>
-                            <mainClass>net.openft.chronicle.releasenotes.ChronicleReleaseNotes</mainClass>
-                            <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
-                            <addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
-                        </manifest>
-                    </archive>
+                    <source>1.8</source>
+                    <target>1.8</target>
                 </configuration>
             </plugin>
 
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-shade-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>shade</goal>
-                        </goals>
-                    </execution>
-                </executions>
+                <artifactId>maven-javadoc-plugin</artifactId>
                 <configuration>
-                    <finalName>${project.artifactId}</finalName>
-                    <minimizeJar>true</minimizeJar>
-                    <filters>
-                        <filter>
-                            <artifact>*:*</artifact>
-                            <excludes>
-                                <exclude>META-INF/*.SF</exclude>
-                                <exclude>META-INF/*.DSA</exclude>
-                                <exclude>META-INF/*.RSA</exclude>
-                            </excludes>
-                        </filter>
-                    </filters>
+                    <source>8</source>
                 </configuration>
             </plugin>
 
@@ -256,88 +214,43 @@
         </plugins>
     </build>
 
-    <profiles>
-        <profile>
-            <id>native</id>
+    <repositories>
+        <repository>
+            <id>third-party-release</id>
+            <name>ThirdParty Repository</name>
+            <url>
+                https://nexus.chronicle.software/content/repositories/thirdparty/
+            </url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+        </repository>
+        <repository>
+            <id>chronicle-enterprise-snapshots</id>
+            <name>Snapshot Repository</name>
+            <url>
+                https://nexus.chronicle.software/content/repositories/snapshots
+            </url>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+        <repository>
+            <id>chronicle-enterprise-release</id>
+            <url>
+                https://nexus.chronicle.software/content/repositories/releases
+            </url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+        </repository>
+    </repositories>
 
-            <dependencyManagement>
-                <dependencies>
-                    <dependency>
-                        <groupId>org.graalvm.sdk</groupId>
-                        <artifactId>graal-sdk</artifactId>
-                        <version>${graalvm.version}</version>
-                        <scope>provided</scope>
-                    </dependency>
-
-                    <dependency>
-                        <groupId>org.slf4j</groupId>
-                        <artifactId>slf4j-nop</artifactId>
-                        <version>1.7.30</version>
-                    </dependency>
-                </dependencies>
-            </dependencyManagement>
-
-            <dependencies>
-                <dependency>
-                    <groupId>org.graalvm.sdk</groupId>
-                    <artifactId>graal-sdk</artifactId>
-                </dependency>
-
-                <dependency>
-                    <groupId>org.slf4j</groupId>
-                    <artifactId>slf4j-nop</artifactId>
-                </dependency>
-            </dependencies>
-
-            <build>
-                <pluginManagement>
-                    <plugins>
-                        <plugin>
-                            <groupId>org.graalvm.nativeimage</groupId>
-                            <artifactId>native-image-maven-plugin</artifactId>
-                            <version>${graalvm.version}</version>
-                        </plugin>
-                    </plugins>
-                </pluginManagement>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-compiler-plugin</artifactId>
-                        <configuration>
-                            <annotationProcessorPaths>
-                                <path>
-                                    <groupId>info.picocli</groupId>
-                                    <artifactId>picocli-codegen</artifactId>
-                                    <version>${picocli.version}</version>
-                                </path>
-                            </annotationProcessorPaths>
-                            <compilerArgs>
-                                <arg>-Aproject=${project.groupId}/${project.artifactId}</arg>
-                            </compilerArgs>
-                        </configuration>
-                    </plugin>
-
-                    <plugin>
-                        <groupId>org.graalvm.nativeimage</groupId>
-                        <artifactId>native-image-maven-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <goals>
-                                    <goal>native-image</goal>
-                                </goals>
-                                <phase>package</phase>
-                            </execution>
-                        </executions>
-                        <configuration>
-                            <skip>false</skip>
-                            <imageName>${project.artifactId}</imageName>
-                            <buildArgs>
-                                --no-fallback
-                            </buildArgs>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
+    <scm>
+        <url>scm:git:git@github.com:OpenHFT/Git-Release-Notes.git</url>
+        <connection>scm:git:git@github.com:OpenHFT/Git-Release-Notes.git</connection>
+        <developerConnection>scm:git:git@github.com:OpenHFT/Chronicle-Queue.git
+        </developerConnection>
+        <tag>develop</tag>
+    </scm>
 </project>
