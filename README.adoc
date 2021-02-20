@@ -8,7 +8,7 @@ The CLI uses GitHub's milestone system to determine which issues should be inclu
 
 Before using the Chronicle Release Notes CLI, make sure you have the following installed on your system:
 
-- link:https://openjdk.java.net/projects/jdk/11/[Java 11]
+- link:https://www.oracle.com/java/technologies/javase/javase-jdk8-downloads.html[Java 11]
 - link:https://maven.apache.org/[Maven]
 
 == Build from Source
@@ -26,7 +26,7 @@ To test that everything was created correctly, you can run the following command
 
 [source, text]
 ----
-java -jar target/chronicle-release-notes.jar --version
+java -jar cli/target/chronicle-release-notes.jar --version
 ----
 
 If everything was created correctly, you should see a version number printed out.
@@ -39,7 +39,7 @@ In order to reduce the amount of dependencies needed to use the Chronicle Releas
 
 Before being able to build the CLI as a native image, make sure you have the following installed on your system:
 
-- link:https://github.com/graalvm/graalvm-ce-builds/releases/tag/vm-20.3.0[GraalVM (Java 11)]
+- link:https://github.com/graalvm/graalvm-ce-builds/releases/tag/vm-21.0.0[GraalVM (Java 8)]
 - link:https://www.graalvm.org/reference-manual/native-image/#install-native-image[Native Image]
 - link:https://maven.apache.org/[Maven]
 
@@ -52,7 +52,7 @@ To create the native image, run the following command from the terminal:
 mvn clean install -Pnative
 ----
 
-The created image is located in the `target` folder, and it's called `chronicle-release-notes`
+The created image is located in the `target` folder of the `cli` module, and it's called `chronicle-release-notes`
 
 === Linux/macOS Installation
 
@@ -60,7 +60,7 @@ To install the built image on your Linux/macOS system, you can run the following
 
 [source, text]
 ----
-mv target/chronicle-release-notes /usr/local/bin; source /usr/local/bin
+mv cli/target/chronicle-release-notes /usr/local/bin; source /usr/local/bin
 ----
 
 To test that image was installed correctly, you can run the following command from the terminal:
