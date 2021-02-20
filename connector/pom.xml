@@ -40,6 +40,12 @@
                 <artifactId>chronicle-release-notes-creator</artifactId>
                 <version>${chronicle-release-notes.version}</version>
             </dependency>
+
+            <dependency>
+                <groupId>net.openhft</groupId>
+                <artifactId>chronicle-release-notes-model</artifactId>
+                <version>${chronicle-release-notes.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 

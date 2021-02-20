@@ -13,4 +13,11 @@
     <artifactId>chronicle-release-notes-connector-api</artifactId>
 
     <name>Chronicle Release Notes - Connector - API</name>
+
+    <dependencies>
+        <dependency>
+            <groupId>net.openhft</groupId>
+            <artifactId>chronicle-release-notes-model</artifactId>
+        </dependency>
+    </dependencies>
 </project>

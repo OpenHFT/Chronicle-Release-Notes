@@ -141,6 +141,49 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
     }
 
     @Override
+    public ReleaseResult createAggregatedRelease(String repository, String tag, List<ReleaseNote> releaseNotes, boolean override) {
+        requireNonNull(repository);
+        requireNonNull(tag);
+        requireNonNull(releaseNotes);
+
+        final GHRepository repositoryRef = getRepository(repository);
+
+        try {
+            if (!checkTagExists(repositoryRef, tag)) {
+                throw new RuntimeException("Tag '" + tag + "' not found");
+            }
+
+            final GHRelease remoteRelease = repositoryRef.getReleaseByTagName(tag);
+
+            if (remoteRelease != null) {
+                if (!override) {
+                    throw new RuntimeException("Release for tag '" + tag + "' already exists: use --override to force an override of an existing release");
+                }
+
+                final ReleaseNote releaseNote = releaseNoteCreator.createAggregatedReleaseNote(tag, releaseNotes);
+
+                final GHRelease release = remoteRelease.update()
+                    .name(releaseNote.getTitle())
+                    .body(releaseNote.getBody())
+                    .update();
+
+                return ReleaseResult.success(release.getHtmlUrl());
+            }
+
+            final ReleaseNote releaseNote = releaseNoteCreator.createAggregatedReleaseNote(tag, releaseNotes);
+
+            final GHRelease release = repositoryRef.createRelease(releaseNote.getTag())
+                .name(releaseNote.getTitle())
+                .body(releaseNote.getBody())
+                .create();
+
+            return ReleaseResult.success(release.getHtmlUrl());
+        } catch (IOException e) {
+            return ReleaseResult.fail(new RuntimeException("Failed to create release for tag '" + tag + "'"));
+        }
+    }
+
+    @Override
     public Class<? extends ConnectorProviderKey> getKey() {
         return GitHubConnectorProviderKey.class;
     }
