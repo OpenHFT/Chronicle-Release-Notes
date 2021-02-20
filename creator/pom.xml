@@ -14,4 +14,20 @@
 
     <name>Chronicle Release Notes - Creator</name>
 
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>net.openhft</groupId>
+                <artifactId>chronicle-release-notes-model</artifactId>
+                <version>${chronicle-release-notes.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <dependency>
+            <groupId>net.openhft</groupId>
+            <artifactId>chronicle-release-notes-model</artifactId>
+        </dependency>
+    </dependencies>
 </project>

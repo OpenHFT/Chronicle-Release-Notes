@@ -40,6 +40,7 @@
         <module>cli</module>
         <module>connector</module>
         <module>creator</module>
+        <module>model</module>
     </modules>
 
     <dependencyManagement>

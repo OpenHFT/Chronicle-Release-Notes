@@ -3,9 +3,9 @@ package net.openhft.chronicle.releasenotes.creator.internal;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import net.openhft.chronicle.releasenotes.creator.model.Issue;
-import net.openhft.chronicle.releasenotes.creator.model.Label;
-import net.openhft.chronicle.releasenotes.creator.model.ReleaseNote;
+import net.openhft.chronicle.releasenotes.model.Issue;
+import net.openhft.chronicle.releasenotes.model.Label;
+import net.openhft.chronicle.releasenotes.model.ReleaseNote;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 

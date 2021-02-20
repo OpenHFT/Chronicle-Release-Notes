@@ -1,4 +1,4 @@
-package net.openhft.chronicle.releasenotes.creator.model;
+package net.openhft.chronicle.releasenotes.model;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;

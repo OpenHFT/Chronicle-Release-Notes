@@ -1,8 +1,8 @@
 package net.openhft.chronicle.releasenotes.creator;
 
 import net.openhft.chronicle.releasenotes.creator.internal.MarkdownReleaseNoteCreator;
-import net.openhft.chronicle.releasenotes.creator.model.Issue;
-import net.openhft.chronicle.releasenotes.creator.model.ReleaseNote;
+import net.openhft.chronicle.releasenotes.model.Issue;
+import net.openhft.chronicle.releasenotes.model.ReleaseNote;
 
 import java.util.List;
 
