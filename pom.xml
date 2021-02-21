@@ -250,8 +250,7 @@
     <scm>
         <url>scm:git:git@github.com:OpenHFT/Git-Release-Notes.git</url>
         <connection>scm:git:git@github.com:OpenHFT/Git-Release-Notes.git</connection>
-        <developerConnection>scm:git:git@github.com:OpenHFT/Chronicle-Queue.git
-        </developerConnection>
+        <developerConnection>scm:git:git@github.com:OpenHFT/Git-Release-Notes.git</developerConnection>
         <tag>develop</tag>
     </scm>
 </project>
