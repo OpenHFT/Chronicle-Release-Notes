@@ -120,7 +120,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
                     .body(releaseNote.getBody())
                     .update();
 
-                return ReleaseResult.success(release.getHtmlUrl());
+                return ReleaseResult.success(releaseNote, release.getHtmlUrl());
             }
 
             final List<ReleaseNote> normalizedReleaseNotes = sourceReleases.stream()
@@ -134,7 +134,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
                 .body(releaseNote.getBody())
                 .create();
 
-            return ReleaseResult.success(release.getHtmlUrl());
+            return ReleaseResult.success(releaseNote, release.getHtmlUrl());
         } catch (IOException e) {
             return ReleaseResult.fail(new RuntimeException("Failed to create release for tag '" + tag + "'"));
         }
@@ -167,7 +167,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
                     .body(releaseNote.getBody())
                     .update();
 
-                return ReleaseResult.success(release.getHtmlUrl());
+                return ReleaseResult.success(releaseNote, release.getHtmlUrl());
             }
 
             final ReleaseNote releaseNote = releaseNoteCreator.createAggregatedReleaseNote(tag, releaseNotes);
@@ -177,7 +177,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
                 .body(releaseNote.getBody())
                 .create();
 
-            return ReleaseResult.success(release.getHtmlUrl());
+            return ReleaseResult.success(releaseNote, release.getHtmlUrl());
         } catch (IOException e) {
             return ReleaseResult.fail(new RuntimeException("Failed to create release for tag '" + tag + "'"));
         }
@@ -218,7 +218,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
                     .body(releaseNote.getBody())
                     .update();
 
-                return ReleaseResult.success(release.getHtmlUrl());
+                return ReleaseResult.success(releaseNote, release.getHtmlUrl());
             }
 
             final List<Issue> issues = filterIssueLabels(issueSupplier.get(), ignoredLabels)
@@ -233,7 +233,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
                 .body(releaseNote.getBody())
                 .create();
 
-            return ReleaseResult.success(release.getHtmlUrl());
+            return ReleaseResult.success(releaseNote, release.getHtmlUrl());
         } catch (IOException e) {
             return ReleaseResult.fail(new RuntimeException("Failed to create release for tag '" + tag + "'"));
         }

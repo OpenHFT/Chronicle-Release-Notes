@@ -227,12 +227,18 @@ public interface ReleaseConnector extends Connector {
      * @author Mislav Milicevic
      */
     class ReleaseResult {
+        private final ReleaseNote releaseNote;
         private final URL releaseUrl;
         private final RuntimeException error;
 
-        private ReleaseResult(URL releaseUrl, RuntimeException error) {
+        private ReleaseResult(ReleaseNote releaseNote, URL releaseUrl, RuntimeException error) {
+            this.releaseNote = releaseNote;
             this.releaseUrl = releaseUrl;
             this.error = error;
+        }
+
+        public ReleaseNote getReleaseNote() {
+            return releaseNote;
         }
 
         public URL getReleaseUrl() {
@@ -257,14 +263,14 @@ public interface ReleaseConnector extends Connector {
             return !isSuccess();
         }
 
-        public static ReleaseResult success(URL url) {
+        public static ReleaseResult success(ReleaseNote releaseNote, URL url) {
             requireNonNull(url);
 
-            return new ReleaseResult(url, null);
+            return new ReleaseResult(releaseNote, url, null);
         }
 
         public static ReleaseResult fail(RuntimeException error) {
-            return new ReleaseResult(null, error);
+            return new ReleaseResult(null, null, error);
         }
     }
 }
