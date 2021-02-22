@@ -38,7 +38,7 @@ public final class MarkdownReleaseNoteCreator implements ReleaseNoteCreator {
                         ))
                     )
                 )
-                .append(String.format(" %s #%d", issue.getTitle(), issue.getNumber()))
+                .append(String.format(" %s [#%d](%s)", issue.getTitle(), issue.getNumber(), issue.getUrl()))
                 .append(NEW_LINE)
         );
 

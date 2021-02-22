@@ -2,6 +2,7 @@ package net.openhft.chronicle.releasenotes.model;
 
 import static java.util.Objects.requireNonNull;
 
+import java.net.URL;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -11,11 +12,17 @@ public final class Issue {
     private final int number;
     private final String title;
     private final List<Label> labels;
+    private final URL url;
 
     public Issue(int number, String title, List<Label> labels) {
+        this(number, title, labels, null);
+    }
+    
+    public Issue(int number, String title, List<Label> labels, URL url) {
         this.number = number;
         this.title = requireNonNull(title);
         this.labels = requireNonNull(labels);
+        this.url = url;
     }
 
     public int getNumber() {
@@ -28,6 +35,10 @@ public final class Issue {
 
     public List<Label> getLabels() {
         return Collections.unmodifiableList(labels);
+    }
+
+    public URL getUrl() {
+        return url;
     }
 
     @Override

@@ -477,7 +477,8 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
         return new Issue(
             issue.getNumber(),
             issue.getTitle(),
-            issue.getLabels().stream().map(ghLabel -> new Label(ghLabel.getName())).collect(toList())
+            issue.getLabels().stream().map(ghLabel -> new Label(ghLabel.getName())).collect(toList()),
+            issue.getHtmlUrl()
         );
     }
 
