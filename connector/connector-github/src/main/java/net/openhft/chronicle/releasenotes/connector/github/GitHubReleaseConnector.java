@@ -382,8 +382,10 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
         final GHBranch branchRef = getBranch(repository, branch);
         final Map<String, GHTag> tags = endTag == null ? getTags(repository, startTag) : getTags(repository, startTag, endTag);
 
+        final GHTag endTagRef = endTag == null ? getPreviousTag(repository, branchRef, tags.get(startTag)) : tags.get(endTag);
+
         final GHCommit startCommit = tags.get(startTag).getCommit();
-        final GHCommit endCommit = endTag == null ? getPreviousTag(repository, branchRef, tags.get(startTag)).getCommit() : tags.get(endTag).getCommit();
+        final GHCommit endCommit = endTagRef.getCommit();
 
         if (getCommitDate(startCommit).before(getCommitDate(endCommit))) {
             throw new RuntimeException("Start tag '" + startTag + "' has a commit date before end tag '" + endTag + "'");
@@ -401,7 +403,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
             }
 
             if (stream(commits).noneMatch(commit -> commit.getSHA1().equals(endCommit.getSHA1()))) {
-                throw new RuntimeException("Tag '" + endTag + "' not found on branch '" + branch + "'");
+                throw new RuntimeException("Tag '" + endTagRef.getName() + "' not found on branch '" + branch + "'");
             }
 
             return commits.toList();
