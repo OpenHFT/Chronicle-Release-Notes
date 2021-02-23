@@ -5,6 +5,7 @@ import static java.util.stream.Collectors.toList;
 
 import net.openhft.chronicle.releasenotes.connector.ConnectorProviderKey;
 import net.openhft.chronicle.releasenotes.connector.ReleaseConnector;
+import net.openhft.chronicle.releasenotes.connector.exception.TagNotFoundException;
 import net.openhft.chronicle.releasenotes.creator.ReleaseNoteCreator;
 import net.openhft.chronicle.releasenotes.model.Issue;
 import net.openhft.chronicle.releasenotes.model.Label;
@@ -92,7 +93,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
 
         try {
             if (!checkTagExists(repositoryRef, tag)) {
-                throw new RuntimeException("Tag '" + tag + "' not found");
+                return ReleaseResult.fail(new TagNotFoundException(tag));
             }
 
             final GHRelease remoteRelease = repositoryRef.getReleaseByTagName(tag);
@@ -150,7 +151,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
 
         try {
             if (!checkTagExists(repositoryRef, tag)) {
-                throw new RuntimeException("Tag '" + tag + "' not found");
+                return ReleaseResult.fail(new TagNotFoundException(tag));
             }
 
             final GHRelease remoteRelease = repositoryRef.getReleaseByTagName(tag);
@@ -196,7 +197,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
 
         try {
             if (!checkTagExists(repository, tag)) {
-                throw new RuntimeException("Tag '" + tag + "' not found");
+                return ReleaseResult.fail(new TagNotFoundException(tag));
             }
 
             final GHRelease remoteRelease = repository.getReleaseByTagName(tag);
