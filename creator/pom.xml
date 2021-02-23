@@ -19,7 +19,7 @@
             <dependency>
                 <groupId>net.openhft</groupId>
                 <artifactId>chronicle-release-notes-model</artifactId>
-                <version>${chronicle-release-notes.version}</version>
+                <version>1.0.0-SNAPSHOT</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
