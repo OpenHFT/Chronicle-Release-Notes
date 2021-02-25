@@ -1,5 +1,7 @@
 package net.openhft.chronicle.releasenotes.connector.github;
 
+import static java.util.Comparator.comparing;
+import static java.util.Comparator.reverseOrder;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
 
@@ -308,10 +310,10 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
             return stream(repository.listTags())
                 .filter(ghTag -> getCommitDate(ghTag.getCommit()).before(tagDate))
                 .filter(ghTag -> isTagOnBranch(repository, tag, branch))
+                .sorted(comparing(tag2 -> getCommitDate(tag2.getCommit()), reverseOrder()))
                 .limit(1)
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("Failed to find a tag before tag '" + tag + "' on branch '" + branch + "' for repository '" + repository.getName() + "'"));
-
         } catch (IOException e) {
             throw new RuntimeException("Failed to fetch tags for repository '" + repository.getFullName() + "'");
         }
