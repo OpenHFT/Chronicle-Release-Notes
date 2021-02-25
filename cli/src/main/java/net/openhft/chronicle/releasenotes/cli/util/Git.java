@@ -16,7 +16,7 @@ import java.util.regex.Pattern;
  */
 public final class Git {
 
-    private static final Pattern REPOSITORY_PATTERN = Pattern.compile("^[a-z0-9-_.]+/[a-z0-9-_.]+$");
+    private static final Pattern REPOSITORY_PATTERN = Pattern.compile("^[A-Za-z0-9-_.]+/[A-Za-z0-9-_.]+$");
 
     private static String configuredRepository;
 
