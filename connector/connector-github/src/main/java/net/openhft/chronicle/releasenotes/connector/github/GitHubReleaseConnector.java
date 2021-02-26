@@ -309,7 +309,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
         try {
             return stream(repository.listTags())
                 .filter(ghTag -> getCommitDate(ghTag.getCommit()).before(tagDate))
-                .filter(ghTag -> isTagOnBranch(repository, tag, branch))
+                .filter(ghTag -> isTagOnBranch(repository, ghTag, branch))
                 .sorted(comparing(tag2 -> getCommitDate(tag2.getCommit()), reverseOrder()))
                 .limit(1)
                 .findFirst()
