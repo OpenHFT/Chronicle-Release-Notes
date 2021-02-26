@@ -422,7 +422,10 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
                 throw new RuntimeException("Tag '" + endTagRef.getName() + "' not found on branch '" + branch + "'");
             }
 
-            return commits.toList();
+            return commits.toList()
+                .stream()
+                .filter(ghCommit -> getCommitDate(ghCommit).after(getCommitDate(endCommit)))
+                .collect(Collectors.toList());
         } catch (IOException e) {
             throw new RuntimeException("Failed to fetch commits for branch '" + branchRef.getName() + "' in repository '" + branchRef.getOwner().getName() + "'");
         }
