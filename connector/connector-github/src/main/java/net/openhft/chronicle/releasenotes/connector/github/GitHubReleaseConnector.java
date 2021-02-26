@@ -25,6 +25,7 @@ import org.kohsuke.github.GitHubBuilder;
 import org.kohsuke.github.PagedIterable;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
@@ -40,6 +41,18 @@ import java.util.stream.StreamSupport;
  * @author Mislav Milicevic
  */
 public final class GitHubReleaseConnector implements ReleaseConnector {
+
+    private static final List<String> CLOSING_KEYWORDS = Arrays.asList(
+        "close",
+        "closes",
+        "closed",
+        "fix",
+        "fixes",
+        "fixed",
+        "resolve",
+        "resolves",
+        "resolved"
+    );
 
     private final GitHub github;
     private final ReleaseNoteCreator releaseNoteCreator;
@@ -428,20 +441,51 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
         try {
             final String commitMessage = commit.getCommitShortInfo().getMessage()
                 .replaceAll("\n", " ")
-                .replaceAll(" +", " ");
+                .replaceAll(" +", " ")
+                .replaceAll(",", "");
 
             final String[] tokens = commitMessage.split(" ");
 
-            return Arrays.stream(tokens)
-                .filter(this::isIssueToken)
-                .map(token -> Integer.valueOf(token.substring(1)))
-                .collect(toList());
+            final List<Integer> ids = new ArrayList<>();
+
+            for (int i = 0; i < tokens.length; i++) {
+                final String token = tokens[i];
+
+                if (!isClosingKeyword(token)) {
+                    continue;
+                }
+
+                if (i == tokens.length - 1) {
+                    continue;
+                }
+
+                final String nextToken = tokens[i + 1];
+
+                if (isLocalIssueReference(nextToken)) {
+                    ids.add(Integer.valueOf(nextToken.substring(1)));
+
+                    i++;
+                    continue;
+                }
+
+                if (isUrlIssueReference(commit.getOwner(), nextToken)) {
+                    ids.add(Integer.valueOf(nextToken.substring(nextToken.lastIndexOf("/") + 1)));
+
+                    i++;
+                }
+            }
+
+            return ids;
         } catch (IOException e) {
             throw new RuntimeException("Failed to fetch commit info for commit '" + commit.getSHA1() + "'");
         }
     }
 
-    private boolean isIssueToken(String token) {
+    private boolean isClosingKeyword(String token) {
+        return CLOSING_KEYWORDS.contains(token.toLowerCase());
+    }
+
+    private boolean isLocalIssueReference(String token) {
         requireNonNull(token);
 
         if (!token.startsWith("#")) {
@@ -449,6 +493,28 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
         }
 
         final String issueId = token.substring(1);
+
+        if (!issueId.chars().allMatch(Character::isDigit)) {
+            return false;
+        }
+
+        return issueId.charAt(0) != '0';
+    }
+
+    private boolean isUrlIssueReference(GHRepository repository, String token) {
+        requireNonNull(token);
+
+        if (!token.startsWith(repository.getHtmlUrl().toString())) {
+            return false;
+        }
+
+        final String[] split = token.split("/");
+
+        if (!split[split.length - 2].equals("issues")) {
+            return false;
+        }
+
+        final String issueId = split[split.length - 1];
 
         if (!issueId.chars().allMatch(Character::isDigit)) {
             return false;
