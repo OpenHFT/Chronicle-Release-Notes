@@ -42,6 +42,7 @@ import java.util.stream.StreamSupport;
  */
 public final class GitHubReleaseConnector implements ReleaseConnector {
 
+    private static final int REQUEST_PAGE_SIZE = 100;
     private static final List<String> CLOSING_KEYWORDS = Arrays.asList(
         "close",
         "closes",
@@ -363,6 +364,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
             final PagedIterable<GHCommit> commits =  repository.queryCommits()
                 .from(branch.getSHA1())
                 .since(getCommitDate(tag.getCommit()))
+                .pageSize(REQUEST_PAGE_SIZE)
                 .list();
 
             return commits.toList();
@@ -412,6 +414,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
                 .from(branchRef.getSHA1())
                 .since(getCommitDate(endCommit))
                 .until(getCommitDate(startCommit))
+                .pageSize(REQUEST_PAGE_SIZE)
                 .list();
 
             if (stream(commits).noneMatch(commit -> commit.getSHA1().equals(startCommit.getSHA1()))) {
