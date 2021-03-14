@@ -14,6 +14,7 @@ import net.openhft.chronicle.releasenotes.model.Label;
 import net.openhft.chronicle.releasenotes.model.ReleaseNote;
 import org.kohsuke.github.GHBranch;
 import org.kohsuke.github.GHCommit;
+import org.kohsuke.github.GHCommitQueryBuilder;
 import org.kohsuke.github.GHIssue;
 import org.kohsuke.github.GHIssueState;
 import org.kohsuke.github.GHMilestone;
@@ -31,6 +32,7 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -313,7 +315,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
         }
     }
 
-    private GHTag getPreviousTag(GHRepository repository, GHBranch branch, GHTag tag) {
+    private Optional<GHTag> getPreviousTag(GHRepository repository, GHBranch branch, GHTag tag) {
         requireNonNull(repository);
         requireNonNull(branch);
         requireNonNull(tag);
@@ -326,8 +328,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
                 .filter(ghTag -> isTagOnBranch(repository, ghTag, branch))
                 .sorted(comparing(tag2 -> getCommitDate(tag2.getCommit()), reverseOrder()))
                 .limit(1)
-                .findFirst()
-                .orElseThrow(() -> new RuntimeException("Failed to find a tag before tag '" + tag + "' on branch '" + branch + "' for repository '" + repository.getName() + "'"));
+                .findFirst();
         } catch (IOException e) {
             throw new RuntimeException("Failed to fetch tags for repository '" + repository.getFullName() + "'");
         }
@@ -400,33 +401,42 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
         final GHBranch branchRef = getBranch(repository, branch);
         final Map<String, GHTag> tags = endTag == null ? getTags(repository, startTag) : getTags(repository, startTag, endTag);
 
-        final GHTag endTagRef = endTag == null ? getPreviousTag(repository, branchRef, tags.get(startTag)) : tags.get(endTag);
+        final GHTag endTagRef = endTag == null
+            ? getPreviousTag(repository, branchRef, tags.get(startTag)).orElse(null)
+            : tags.get(endTag);
 
         final GHCommit startCommit = tags.get(startTag).getCommit();
-        final GHCommit endCommit = endTagRef.getCommit();
+        final GHCommit endCommit = endTagRef == null ? null : endTagRef.getCommit();
 
-        if (getCommitDate(startCommit).before(getCommitDate(endCommit))) {
+        if (endCommit != null && getCommitDate(startCommit).before(getCommitDate(endCommit))) {
             throw new RuntimeException("Start tag '" + startTag + "' has a commit date before end tag '" + endTag + "'");
         }
 
         try {
-            final PagedIterable<GHCommit> commits = branchRef.getOwner().queryCommits()
+            final GHCommitQueryBuilder commitQueryBuilder = branchRef.getOwner().queryCommits()
                 .from(branchRef.getSHA1())
-                .since(getCommitDate(endCommit))
                 .until(getCommitDate(startCommit))
-                .pageSize(REQUEST_PAGE_SIZE)
-                .list();
+                .pageSize(REQUEST_PAGE_SIZE);
 
-            if (stream(commits).noneMatch(commit -> commit.getSHA1().equals(startCommit.getSHA1()))) {
+            if (endCommit != null) {
+                commitQueryBuilder.since(getCommitDate(endCommit));
+            }
+
+            final List<GHCommit> commits = commitQueryBuilder.list().toList();
+
+            if (commits.stream().noneMatch(commit -> commit.getSHA1().equals(startCommit.getSHA1()))) {
                 throw new RuntimeException("Tag '" + startTag + "' not found on branch '" + branch + "'");
             }
 
-            if (stream(commits).noneMatch(commit -> commit.getSHA1().equals(endCommit.getSHA1()))) {
+            if (endCommit != null && commits.stream().noneMatch(commit -> commit.getSHA1().equals(endCommit.getSHA1()))) {
                 throw new RuntimeException("Tag '" + endTagRef.getName() + "' not found on branch '" + branch + "'");
             }
 
-            return commits.toList()
-                .stream()
+            if (endCommit == null) {
+                return commits;
+            }
+
+            return commits.stream()
                 .filter(ghCommit -> getCommitDate(ghCommit).after(getCommitDate(endCommit)))
                 .collect(Collectors.toList());
         } catch (IOException e) {
