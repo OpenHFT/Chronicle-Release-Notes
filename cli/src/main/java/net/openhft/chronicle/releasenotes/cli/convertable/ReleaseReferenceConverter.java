@@ -9,7 +9,7 @@ import java.util.regex.Pattern;
 
 public final class ReleaseReferenceConverter implements ITypeConverter<ReleaseReference> {
 
-    private static final Pattern RELEASE_PATTERN = Pattern.compile("^[a-z0-9-_.]+/[a-z0-9-_.]+:[a-z0-9-_./@$#!()]+$");
+    private static final Pattern RELEASE_PATTERN = Pattern.compile("^[A-Za-z0-9-_.]+/[A-Za-z0-9-_.]+:[A-Za-z0-9-_./@$#!()]+$");
 
     @Override
     public ReleaseReference convert(String value) {
