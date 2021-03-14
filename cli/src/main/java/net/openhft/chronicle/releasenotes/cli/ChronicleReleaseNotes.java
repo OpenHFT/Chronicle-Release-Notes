@@ -46,7 +46,8 @@ public final class ChronicleReleaseNotes {
         commandLine.setUsageHelpAutoWidth(true);
 
         commandLine.setExecutionExceptionHandler((exception, cmdLine, parseResult) -> {
-            cmdLine.getErr().println(cmdLine.getColorScheme().errorText(exception.getMessage()));
+            cmdLine.getErr().println(cmdLine.getColorScheme().errorText(exception.getMessage() != null ? exception.getMessage() : "An error has occurred"));
+            exception.printStackTrace();
 
             return cmdLine.getExitCodeExceptionMapper() != null
                 ? cmdLine.getExitCodeExceptionMapper().getExitCode(exception)
