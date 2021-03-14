@@ -10,7 +10,7 @@
     </parent>
 
     <artifactId>chronicle-release-notes-parent</artifactId>
-    <version>1.0.1-SNAPSHOT</version>
+    <version>1.0.2-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>Chronicle Release Notes</name>
