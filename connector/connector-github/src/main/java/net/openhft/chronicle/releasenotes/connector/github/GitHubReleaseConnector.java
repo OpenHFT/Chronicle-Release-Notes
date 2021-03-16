@@ -4,6 +4,7 @@ import static java.util.Comparator.comparing;
 import static java.util.Comparator.reverseOrder;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toMap;
 
 import net.openhft.chronicle.releasenotes.connector.ConnectorProviderKey;
 import net.openhft.chronicle.releasenotes.connector.ReleaseConnector;
@@ -30,8 +31,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -116,21 +119,31 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
 
             final GHRelease remoteRelease = repositoryRef.getReleaseByTagName(tag);
 
-            final List<GHRelease> sourceReleases = releases.entrySet().stream()
-                    .map(entry -> {
-                        final GHRepository sourceRepository = getRepository(entry.getKey());
-                        return entry.getValue().stream().map(release -> getRelease(sourceRepository, release)).collect(toList());
-                    })
-                    .flatMap(Collection::stream).collect(toList());
+            final Map<String, Map<String, GHRelease>> sourceReleases = releases.entrySet().stream()
+                .collect(toMap(Entry::getKey, entry -> {
+                    final GHRepository sourceRepository = getRepository(entry.getKey());
+                    return entry.getValue().stream()
+                        .collect(HashMap::new, (m, v) -> m.put(v, getRelease(sourceRepository, v)), HashMap::putAll);
+                }));
+
+            final List<ReleaseNote> normalizedReleaseNotes = sourceReleases.values().stream()
+                .map(stringGHReleaseMap -> stringGHReleaseMap.entrySet().stream().map(
+                    entry -> {
+                        final GHRelease release = entry.getValue();
+
+                        if (release == null) {
+                            return new ReleaseNote(entry.getKey(), entry.getKey(), "");
+                        }
+
+                        return new ReleaseNote(release.getTagName(), release.getName(), release.getBody());
+                    }).collect(toList()))
+                .flatMap(Collection::stream)
+                .collect(toList());
 
             if (remoteRelease != null) {
                 if (!override) {
                     throw new RuntimeException("Release for tag '" + tag + "' already exists: use --override to force an override of an existing release");
                 }
-
-                final List<ReleaseNote> normalizedReleaseNotes = sourceReleases.stream()
-                    .map(release -> new ReleaseNote(release.getTagName(), release.getName(), release.getBody()))
-                    .collect(toList());
 
                 final ReleaseNote releaseNote = releaseNoteCreator.createAggregatedReleaseNote(tag, normalizedReleaseNotes);
 
@@ -141,10 +154,6 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
 
                 return ReleaseResult.success(releaseNote, release.getHtmlUrl());
             }
-
-            final List<ReleaseNote> normalizedReleaseNotes = sourceReleases.stream()
-                .map(release -> new ReleaseNote(release.getTagName(), release.getName(), release.getBody()))
-                .collect(toList());
 
             final ReleaseNote releaseNote = releaseNoteCreator.createAggregatedReleaseNote(tag, normalizedReleaseNotes);
 
