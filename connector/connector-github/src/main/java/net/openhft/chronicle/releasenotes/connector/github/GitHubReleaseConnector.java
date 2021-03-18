@@ -8,6 +8,7 @@ import static java.util.stream.Collectors.toMap;
 
 import net.openhft.chronicle.releasenotes.connector.ConnectorProviderKey;
 import net.openhft.chronicle.releasenotes.connector.ReleaseConnector;
+import net.openhft.chronicle.releasenotes.connector.ReleaseOptions;
 import net.openhft.chronicle.releasenotes.connector.exception.TagNotFoundException;
 import net.openhft.chronicle.releasenotes.creator.ReleaseNoteCreator;
 import net.openhft.chronicle.releasenotes.model.Issue;
@@ -71,18 +72,18 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
     }
 
     @Override
-    public ReleaseResult createReleaseFromBranch(String repository, String tag, String branch, List<String> ignoredLabels, boolean override) {
+    public ReleaseResult createReleaseFromBranch(String repository, String tag, String branch, ReleaseOptions releaseOptions) {
         requireNonNull(repository);
         requireNonNull(tag);
         requireNonNull(branch);
 
         final GHRepository repositoryRef = getRepository(repository);
 
-        return createRelease(repositoryRef, tag, () -> getIssuesForBranch(repositoryRef, branch, tag), ignoredLabels, override);
+        return createRelease(repositoryRef, tag, () -> getIssuesForBranch(repositoryRef, branch, tag, releaseOptions.includeIssuesWithoutClosingKeyword()), releaseOptions);
     }
 
     @Override
-    public ReleaseResult createReleaseFromBranch(String repository, String tag, String endTag, String branch, List<String> ignoredLabels, boolean override) {
+    public ReleaseResult createReleaseFromBranch(String repository, String tag, String endTag, String branch, ReleaseOptions releaseOptions) {
         requireNonNull(repository);
         requireNonNull(tag);
         requireNonNull(endTag);
@@ -90,18 +91,18 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
 
         final GHRepository repositoryRef = getRepository(repository);
 
-        return createRelease(repositoryRef, tag, () -> getIssuesForBranch(repositoryRef, branch, tag, endTag), ignoredLabels, override);
+        return createRelease(repositoryRef, tag, () -> getIssuesForBranch(repositoryRef, branch, tag, endTag, releaseOptions.includeIssuesWithoutClosingKeyword()), releaseOptions);
     }
 
     @Override
-        public ReleaseResult createReleaseFromMilestone(String repository, String tag, String milestone, List<String> ignoredLabels, boolean override) {
+    public ReleaseResult createReleaseFromMilestone(String repository, String tag, String milestone, ReleaseOptions releaseOptions) {
         requireNonNull(repository);
         requireNonNull(tag);
         requireNonNull(milestone);
 
         final GHRepository repositoryRef = getRepository(repository);
 
-        return createRelease(repositoryRef, tag, () -> getClosedMilestoneIssues(repositoryRef, milestone), ignoredLabels, override);
+        return createRelease(repositoryRef, tag, () -> getClosedMilestoneIssues(repositoryRef, milestone), releaseOptions);
     }
 
     @Override
@@ -217,7 +218,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
     }
 
     private ReleaseResult createRelease(
-            GHRepository repository, String tag, Supplier<List<GHIssue>> issueSupplier, List<String> ignoredLabels, boolean override) {
+            GHRepository repository, String tag, Supplier<List<GHIssue>> issueSupplier, ReleaseOptions releaseOptions) {
         requireNonNull(repository);
         requireNonNull(tag);
         requireNonNull(issueSupplier);
@@ -230,11 +231,11 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
             final GHRelease remoteRelease = repository.getReleaseByTagName(tag);
 
             if (remoteRelease != null) {
-                if (!override) {
+                if (!releaseOptions.overrideRelease()) {
                     throw new RuntimeException("Release for tag '" + tag + "' already exists: use --override to force an override of an existing release");
                 }
 
-                final List<Issue> issues = filterIssueLabels(issueSupplier.get(), ignoredLabels)
+                final List<Issue> issues = filterIssueLabels(issueSupplier.get(), releaseOptions.getIgnoredLabels())
                     .stream()
                     .map(this::mapIssue)
                     .collect(toList());
@@ -249,7 +250,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
                 return ReleaseResult.success(releaseNote, release.getHtmlUrl());
             }
 
-            final List<Issue> issues = filterIssueLabels(issueSupplier.get(), ignoredLabels)
+            final List<Issue> issues = filterIssueLabels(issueSupplier.get(), releaseOptions.getIgnoredLabels())
                 .stream()
                 .map(this::mapIssue)
                 .collect(toList());
@@ -383,21 +384,21 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
         }
     }
 
-    private List<GHIssue> getIssuesForBranch(GHRepository repository, String branch, String startTag) {
+    private List<GHIssue> getIssuesForBranch(GHRepository repository, String branch, String startTag, boolean includeIssuesWithoutClosingKeyword) {
         requireNonNull(repository);
         requireNonNull(branch);
         requireNonNull(startTag);
 
-        return getIssuesForBranch(repository, branch, startTag, null);
+        return getIssuesForBranch(repository, branch, startTag, null, includeIssuesWithoutClosingKeyword);
     }
 
-    private List<GHIssue> getIssuesForBranch(GHRepository repository, String branch, String startTag, String endTag) {
+    private List<GHIssue> getIssuesForBranch(GHRepository repository, String branch, String startTag, String endTag, boolean includeIssuesWithoutClosingKeyword) {
         requireNonNull(repository);
         requireNonNull(branch);
         requireNonNull(startTag);
 
         final List<GHCommit> commits = getCommitsForBranch(repository, branch, startTag, endTag);
-        final List<Integer> issueIds = extractIssueIdsFromCommits(commits);
+        final List<Integer> issueIds = extractIssueIdsFromCommits(commits, includeIssuesWithoutClosingKeyword);
 
         return getIssuesFromIds(repository, issueIds);
     }
@@ -453,14 +454,14 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
         }
     }
 
-    private List<Integer> extractIssueIdsFromCommits(List<GHCommit> commits) {
+    private List<Integer> extractIssueIdsFromCommits(List<GHCommit> commits, boolean includeIssuesWithoutClosingKeyword) {
         return commits.stream()
-            .map(this::extractIssueIdsFromCommit)
+            .map(commit -> extractIssueIdsFromCommit(commit, includeIssuesWithoutClosingKeyword))
             .flatMap(Collection::stream)
             .collect(toList());
     }
 
-    private List<Integer> extractIssueIdsFromCommit(GHCommit commit) {
+    private List<Integer> extractIssueIdsFromCommit(GHCommit commit, boolean includeIssuesWithoutClosingKeyword) {
         requireNonNull(commit);
 
         try {
@@ -476,25 +477,27 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
             for (int i = 0; i < tokens.length; i++) {
                 final String token = tokens[i];
 
-                if (!isClosingKeyword(token)) {
-                    continue;
+                if (!includeIssuesWithoutClosingKeyword) {
+                    if (!isClosingKeyword(token)) {
+                        continue;
+                    }
+
+                    if (i == tokens.length - 1) {
+                        continue;
+                    }
                 }
 
-                if (i == tokens.length - 1) {
-                    continue;
-                }
+                final String tokenToCheck = includeIssuesWithoutClosingKeyword ? token : tokens[i + 1];
 
-                final String nextToken = tokens[i + 1];
-
-                if (isLocalIssueReference(nextToken)) {
-                    ids.add(Integer.valueOf(nextToken.substring(1)));
+                if (isLocalIssueReference(tokenToCheck)) {
+                    ids.add(Integer.valueOf(tokenToCheck.substring(1)));
 
                     i++;
                     continue;
                 }
 
-                if (isUrlIssueReference(commit.getOwner(), nextToken)) {
-                    ids.add(Integer.valueOf(nextToken.substring(nextToken.lastIndexOf("/") + 1)));
+                if (isUrlIssueReference(commit.getOwner(), tokenToCheck)) {
+                    ids.add(Integer.valueOf(tokenToCheck.substring(tokenToCheck.lastIndexOf("/") + 1)));
 
                     i++;
                 }

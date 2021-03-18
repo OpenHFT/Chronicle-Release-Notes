@@ -21,24 +21,13 @@ public interface ReleaseConnector extends Connector {
      * release are all issues contained between the provided
      * {@code tag} and the tag that chronologically came before
      * it.
-     * <p>
-     * If {@code ignoredLabels} is not {@code null} or is not empty, then
-     * all of the issues which contain one of the provided labels are
-     * ignored in the release note generation process.
-     * <p>
-     * In case a release for the provided tag already exists and {@code override}
-     * is {@code true}, the existing release will be updated with the contents
-     * of the newly generated release. Otherwise, a {@link RuntimeException}
-     * will be thrown.
      *
      * @param repository reference
      * @param tag name
      * @param branch reference
-     * @param ignoredLabels a list of ignored labels
-     * @param override an existing release
      * @return {@link ReleaseResult}
      */
-    ReleaseResult createReleaseFromBranch(String repository, String tag, String branch, List<String> ignoredLabels, boolean override);
+    ReleaseResult createReleaseFromBranch(String repository, String tag, String branch, ReleaseOptions releaseOptions);
 
     /**
      * Creates a release for a provided {@code tag} and returns a
@@ -48,19 +37,14 @@ public interface ReleaseConnector extends Connector {
      * release are all issues contained between the provided
      * {@code tag} and the tag that chronologically came before
      * it.
-     * <p>
-     * If {@code ignoredLabels} is not {@code null} or is not empty, then
-     * all of the issues which contain one of the provided labels are
-     * ignored in the release note generation process.
      *
      * @param repository reference
      * @param tag name
      * @param branch reference
-     * @param ignoredLabels a list of ignored labels
      * @return {@link ReleaseResult}
      */
-    default ReleaseResult createReleaseFromBranch(String repository, String tag, String branch, List<String> ignoredLabels) {
-        return createReleaseFromBranch(repository, tag, branch, ignoredLabels, false);
+    default ReleaseResult createReleaseFromBranch(String repository, String tag, String branch) {
+        return createReleaseFromBranch(repository, tag, branch, ReleaseOptions.DEFAULT);
     }
 
     /**
@@ -70,25 +54,14 @@ public interface ReleaseConnector extends Connector {
      * notes associated with this release. The contents of the
      * release are all issues contained between the provided
      * {@code tag} and {@code endTag}.
-     * <p>
-     * If {@code ignoredLabels} is not {@code null} or is not empty, then
-     * all of the issues which contain one of the provided labels are
-     * ignored in the release note generation process.
-     * <p>
-     * In case a release for the provided tag already exists and {@code override}
-     * is {@code true}, the existing release will be updated with the contents
-     * of the newly generated release. Otherwise, a {@link RuntimeException}
-     * will be thrown.
      *
      * @param repository reference
      * @param tag name
      * @param endTag name
      * @param branch reference
-     * @param ignoredLabels a list of ignored labels
-     * @param override an existing release
      * @return {@link ReleaseResult}
      */
-    ReleaseResult createReleaseFromBranch(String repository, String tag, String endTag, String branch, List<String> ignoredLabels, boolean override);
+    ReleaseResult createReleaseFromBranch(String repository, String tag, String endTag, String branch, ReleaseOptions releaseOptions);
 
     /**
      * Creates a release for a provided {@code tag} and returns a
@@ -97,20 +70,15 @@ public interface ReleaseConnector extends Connector {
      * notes associated with this release. The contents of the
      * release are all issues contained between the provided
      * {@code tag} and {@code endTag}.
-     * <p>
-     * If {@code ignoredLabels} is not {@code null} or is not empty, then
-     * all of the issues which contain one of the provided labels are
-     * ignored in the release note generation process.
      *
      * @param repository reference
      * @param tag name
      * @param endTag name
      * @param branch reference
-     * @param ignoredLabels a list of ignored labels
      * @return {@link ReleaseResult}
      */
-    default ReleaseResult createReleaseFromBranch(String repository, String tag, String endTag, String branch, List<String> ignoredLabels) {
-        return createReleaseFromBranch(repository, tag, endTag, branch, ignoredLabels, false);
+    default ReleaseResult createReleaseFromBranch(String repository, String tag, String endTag, String branch) {
+        return createReleaseFromBranch(repository, tag, endTag, branch, ReleaseOptions.DEFAULT);
     }
 
     /**
@@ -118,43 +86,27 @@ public interface ReleaseConnector extends Connector {
      * {@link ReleaseResult}.. The provided {@code milestone} is used
      * as a reference to generate the contents of the release notes
      * associated with this release.
-     * <p>
-     * If {@code ignoredLabels} is not {@code null} or is not empty, then
-     * all of the issues which contain one of the provided labels are
-     * ignored in the release note generation process.
-     * <p>
-     * In case a release for the provided tag already exists and {@code override}
-     * is {@code true}, the existing release will be updated with the contents
-     * of the newly generated release. Otherwise, a {@link RuntimeException}
-     * will be thrown.
      *
      * @param repository reference
      * @param tag name
      * @param milestone issues to include in the release
-     * @param ignoredLabels a list of ignored labels
-     * @param override an existing release
      * @return {@link ReleaseResult}
      */
-    ReleaseResult createReleaseFromMilestone(String repository, String tag, String milestone, List<String> ignoredLabels, boolean override);
+    ReleaseResult createReleaseFromMilestone(String repository, String tag, String milestone, ReleaseOptions releaseOptions);
 
     /**
      * Creates a release for a provided {@code tag} and returns a
-     * {@link ReleaseResult}. The provided {@code milestone} is used
+     * {@link ReleaseResult}.. The provided {@code milestone} is used
      * as a reference to generate the contents of the release notes
      * associated with this release.
-     * <p>
-     * If {@code ignoredLabels} is not {@code null} or is not empty, then
-     * all of the issues which contain one of the provided labels are
-     * ignored in the release note generation process.
-     * <p>
+     *
      * @param repository reference
      * @param tag name
      * @param milestone issues to include in the release
-     * @param ignoredLabels a list of ignored labels
      * @return {@link ReleaseResult}
      */
-    default ReleaseResult createReleaseFromMilestone(String repository, String tag, String milestone, List<String> ignoredLabels) {
-        return createReleaseFromMilestone(repository, tag, milestone, ignoredLabels, false);
+    default ReleaseResult createReleaseFromMilestone(String repository, String tag, String milestone) {
+        return createReleaseFromMilestone(repository, tag, milestone, ReleaseOptions.DEFAULT);
     }
 
     /**
@@ -221,6 +173,51 @@ public interface ReleaseConnector extends Connector {
      */
     default ReleaseResult createAggregatedRelease(String repository, String tag, List<ReleaseNote> releaseNotes) {
         return createAggregatedRelease(repository, tag, releaseNotes, false);
+    }
+
+    @Deprecated
+    default ReleaseResult createReleaseFromBranch(String repository, String tag, String branch, List<String> ignoredLabels, boolean override) {
+        final ReleaseOptions releaseOptions = new ReleaseOptions.Builder()
+            .ignoreLabels(ignoredLabels)
+            .overrideRelease(override)
+            .build();
+
+        return createReleaseFromBranch(repository, tag, branch, releaseOptions);
+    }
+
+    @Deprecated
+    default ReleaseResult createReleaseFromBranch(String repository, String tag, String branch, List<String> ignoredLabels) {
+        return createReleaseFromBranch(repository, tag, branch, ignoredLabels, false);
+    }
+
+    @Deprecated
+    default ReleaseResult createReleaseFromBranch(String repository, String tag, String endTag, String branch, List<String> ignoredLabels, boolean override) {
+        final ReleaseOptions releaseOptions = new ReleaseOptions.Builder()
+            .ignoreLabels(ignoredLabels)
+            .overrideRelease(override)
+            .build();
+
+        return createReleaseFromBranch(repository, tag, endTag, branch, releaseOptions);
+    }
+
+    @Deprecated
+    default ReleaseResult createReleaseFromBranch(String repository, String tag, String endTag, String branch, List<String> ignoredLabels) {
+        return createReleaseFromBranch(repository, tag, endTag, branch, ignoredLabels, false);
+    }
+
+    @Deprecated
+    default ReleaseResult createReleaseFromMilestone(String repository, String tag, String milestone, List<String> ignoredLabels, boolean override) {
+        final ReleaseOptions releaseOptions = new ReleaseOptions.Builder()
+                .ignoreLabels(ignoredLabels)
+                .overrideRelease(override)
+                .build();
+
+        return createReleaseFromMilestone(repository, tag, milestone, releaseOptions);
+    }
+
+    @Deprecated
+    default ReleaseResult createReleaseFromMilestone(String repository, String tag, String milestone, List<String> ignoredLabels) {
+        return createReleaseFromMilestone(repository, tag, milestone, ignoredLabels, false);
     }
 
     /**
