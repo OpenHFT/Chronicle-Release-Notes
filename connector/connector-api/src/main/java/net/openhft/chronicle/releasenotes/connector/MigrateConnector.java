@@ -2,7 +2,9 @@ package net.openhft.chronicle.releasenotes.connector;
 
 import static java.util.Objects.requireNonNull;
 
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * @author Mislav Milicevic
@@ -13,16 +15,20 @@ public interface MigrateConnector extends Connector {
      * Migrates all issues from a list of a source milestones into a
      * singular target milestone. The results of the operation are
      * stored and returned in a {@link MigrateResult}.
-     * <p>
-     * If {@code ignoredLabels} is not {@code null} or is not empty, then
-     * all of the issues which contain one of the provided labels are
-     * ignored in the migration process.
      *
      * @param fromMilestones a list source milestones
      * @param toMilestone destination milestones
-     * @param ignoredLabels a list of ignored labels
      */
-    MigrateResult migrateMilestones(String repository, Set<String> fromMilestones, String toMilestone, Set<String> ignoredLabels);
+    MigrateResult migrateMilestones(String repository, List<String> fromMilestones, String toMilestone, MigrateOptions migrateOptions);
+
+    @Deprecated
+    default MigrateResult migrateMilestones(String repository, List<String> fromMilestones, String toMilestone, List<String> ignoredLabels) {
+        final MigrateOptions migrateOptions = new MigrateOptions.Builder()
+            .ignoreLabels(ignoredLabels)
+            .build();
+
+        return migrateMilestones(repository, fromMilestones, toMilestone, migrateOptions);
+    }
 
     /**
      * @author Mislav Milicevic
@@ -60,6 +66,49 @@ public interface MigrateConnector extends Connector {
             requireNonNull(error);
 
             return new MigrateResult(error);
+        }
+    }
+
+    /**
+     * @author Mislav Milicevic
+     */
+    class MigrateOptions {
+        public static final MigrateOptions DEFAULT = new MigrateOptions(
+            new ArrayList<>()
+        );
+
+        private final List<String> ignoredLabels;
+
+        private MigrateOptions(List<String> ignoredLabels) {
+            this.ignoredLabels = ignoredLabels;
+        }
+
+        public List<String> getIgnoredLabels() {
+            return ignoredLabels;
+        }
+
+        public static final class Builder {
+            private final List<String> ignoredLabels = new ArrayList<>();
+
+            public Builder ignoreLabels(String... labels) {
+                requireNonNull(labels);
+
+                ignoredLabels.addAll(Arrays.asList(labels));
+                return this;
+            }
+
+            public Builder ignoreLabels(List<String> labels) {
+                requireNonNull(labels);
+
+                ignoredLabels.addAll(labels);
+                return this;
+            }
+
+            public MigrateOptions build() {
+                return new MigrateOptions(
+                    ignoredLabels
+                );
+            }
         }
     }
 

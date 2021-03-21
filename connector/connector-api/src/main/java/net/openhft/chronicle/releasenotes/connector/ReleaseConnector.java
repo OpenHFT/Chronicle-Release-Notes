@@ -5,6 +5,8 @@ import static java.util.Objects.requireNonNull;
 import net.openhft.chronicle.releasenotes.model.ReleaseNote;
 
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -27,7 +29,7 @@ public interface ReleaseConnector extends Connector {
      * @param branch reference
      * @return {@link ReleaseResult}
      */
-    ReleaseResult createReleaseFromBranch(String repository, String tag, String branch, ReleaseOptions releaseOptions);
+    ReleaseResult createReleaseFromBranch(String repository, String tag, String branch, BranchReleaseOptions releaseOptions);
 
     /**
      * Creates a release for a provided {@code tag} and returns a
@@ -44,7 +46,7 @@ public interface ReleaseConnector extends Connector {
      * @return {@link ReleaseResult}
      */
     default ReleaseResult createReleaseFromBranch(String repository, String tag, String branch) {
-        return createReleaseFromBranch(repository, tag, branch, ReleaseOptions.DEFAULT);
+        return createReleaseFromBranch(repository, tag, branch, BranchReleaseOptions.DEFAULT);
     }
 
     /**
@@ -61,7 +63,7 @@ public interface ReleaseConnector extends Connector {
      * @param branch reference
      * @return {@link ReleaseResult}
      */
-    ReleaseResult createReleaseFromBranch(String repository, String tag, String endTag, String branch, ReleaseOptions releaseOptions);
+    ReleaseResult createReleaseFromBranch(String repository, String tag, String endTag, String branch, BranchReleaseOptions releaseOptions);
 
     /**
      * Creates a release for a provided {@code tag} and returns a
@@ -78,7 +80,7 @@ public interface ReleaseConnector extends Connector {
      * @return {@link ReleaseResult}
      */
     default ReleaseResult createReleaseFromBranch(String repository, String tag, String endTag, String branch) {
-        return createReleaseFromBranch(repository, tag, endTag, branch, ReleaseOptions.DEFAULT);
+        return createReleaseFromBranch(repository, tag, endTag, branch, BranchReleaseOptions.DEFAULT);
     }
 
     /**
@@ -92,7 +94,7 @@ public interface ReleaseConnector extends Connector {
      * @param milestone issues to include in the release
      * @return {@link ReleaseResult}
      */
-    ReleaseResult createReleaseFromMilestone(String repository, String tag, String milestone, ReleaseOptions releaseOptions);
+    ReleaseResult createReleaseFromMilestone(String repository, String tag, String milestone, MilestoneReleaseOptions milestoneReleaseOptions);
 
     /**
      * Creates a release for a provided {@code tag} and returns a
@@ -106,7 +108,7 @@ public interface ReleaseConnector extends Connector {
      * @return {@link ReleaseResult}
      */
     default ReleaseResult createReleaseFromMilestone(String repository, String tag, String milestone) {
-        return createReleaseFromMilestone(repository, tag, milestone, ReleaseOptions.DEFAULT);
+        return createReleaseFromMilestone(repository, tag, milestone, MilestoneReleaseOptions.DEFAULT);
     }
 
     /**
@@ -114,19 +116,13 @@ public interface ReleaseConnector extends Connector {
      * {@link ReleaseResult}. The provided {@code releases} are used as
      * a reference to generate the contents of the release notes associated
      * with this aggregated release.
-     * <p>
-     * In case a release for the provided tag already exists and {@code override}
-     * is {@code true}, the existing release will be updated with the contents
-     * of the newly generated release. Otherwise, a {@link RuntimeException}
-     * will be thrown.
      *
      * @param repository reference
      * @param tag name
      * @param releases to include in the aggregated release
-     * @param override an existing release
      * @return {@link ReleaseResult}
      */
-    ReleaseResult createAggregatedRelease(String repository, String tag, Map<String, List<String>> releases, boolean override);
+    ReleaseResult createAggregatedRelease(String repository, String tag, Map<String, List<String>> releases, AggregateReleaseOptions releaseOptions);
 
     /**
      * Creates and a release for a provided {@code tag} and returns a
@@ -140,26 +136,20 @@ public interface ReleaseConnector extends Connector {
      * @return {@link ReleaseResult}
      */
     default ReleaseResult createAggregatedRelease(String repository, String tag, Map<String, List<String>> releases) {
-        return createAggregatedRelease(repository, tag, releases, false);
+        return createAggregatedRelease(repository, tag, releases, AggregateReleaseOptions.DEFAULT);
     }
 
     /**
      * Creates and a release for a provided {@code tag} and returns a
      * {@link ReleaseResult}. The provided {@code releaseNotes} are used as
      * a reference to generate the aggregated release.
-     * <p>
-     * In case a release for the provided tag already exists and {@code override}
-     * is {@code true}, the existing release will be updated with the contents
-     * of the newly generated release. Otherwise, a {@link RuntimeException}
-     * will be thrown.
      *
      * @param repository reference
      * @param tag name
      * @param releaseNotes to include in the aggregated release
-     * @param override an existing release
      * @return {@link ReleaseResult}
      */
-    ReleaseResult createAggregatedRelease(String repository, String tag, List<ReleaseNote> releaseNotes, boolean override);
+    ReleaseResult createAggregatedRelease(String repository, String tag, List<ReleaseNote> releaseNotes, AggregateReleaseOptions releaseOptions);
 
     /**
      * Creates and a release for a provided {@code tag} and returns a
@@ -172,12 +162,12 @@ public interface ReleaseConnector extends Connector {
      * @return {@link ReleaseResult}
      */
     default ReleaseResult createAggregatedRelease(String repository, String tag, List<ReleaseNote> releaseNotes) {
-        return createAggregatedRelease(repository, tag, releaseNotes, false);
+        return createAggregatedRelease(repository, tag, releaseNotes, AggregateReleaseOptions.DEFAULT);
     }
 
     @Deprecated
     default ReleaseResult createReleaseFromBranch(String repository, String tag, String branch, List<String> ignoredLabels, boolean override) {
-        final ReleaseOptions releaseOptions = new ReleaseOptions.Builder()
+        final BranchReleaseOptions releaseOptions = new BranchReleaseOptions.Builder()
             .ignoreLabels(ignoredLabels)
             .overrideRelease(override)
             .build();
@@ -192,7 +182,7 @@ public interface ReleaseConnector extends Connector {
 
     @Deprecated
     default ReleaseResult createReleaseFromBranch(String repository, String tag, String endTag, String branch, List<String> ignoredLabels, boolean override) {
-        final ReleaseOptions releaseOptions = new ReleaseOptions.Builder()
+        final BranchReleaseOptions releaseOptions = new BranchReleaseOptions.Builder()
             .ignoreLabels(ignoredLabels)
             .overrideRelease(override)
             .build();
@@ -207,10 +197,10 @@ public interface ReleaseConnector extends Connector {
 
     @Deprecated
     default ReleaseResult createReleaseFromMilestone(String repository, String tag, String milestone, List<String> ignoredLabels, boolean override) {
-        final ReleaseOptions releaseOptions = new ReleaseOptions.Builder()
-                .ignoreLabels(ignoredLabels)
-                .overrideRelease(override)
-                .build();
+        final MilestoneReleaseOptions releaseOptions = new MilestoneReleaseOptions.Builder()
+            .ignoreLabels(ignoredLabels)
+            .overrideRelease(override)
+            .build();
 
         return createReleaseFromMilestone(repository, tag, milestone, releaseOptions);
     }
@@ -218,6 +208,24 @@ public interface ReleaseConnector extends Connector {
     @Deprecated
     default ReleaseResult createReleaseFromMilestone(String repository, String tag, String milestone, List<String> ignoredLabels) {
         return createReleaseFromMilestone(repository, tag, milestone, ignoredLabels, false);
+    }
+
+    @Deprecated
+    default ReleaseResult createAggregatedRelease(String repository, String tag, Map<String, List<String>> releases, boolean override) {
+        final AggregateReleaseOptions releaseOptions = new AggregateReleaseOptions.Builder()
+            .overrideRelease(override)
+            .build();
+
+        return createAggregatedRelease(repository, tag, releases, releaseOptions);
+    }
+
+    @Deprecated
+    default ReleaseResult createAggregatedRelease(String repository, String tag, List<ReleaseNote> releaseNotes, boolean override) {
+        final AggregateReleaseOptions releaseOptions = new AggregateReleaseOptions.Builder()
+            .overrideRelease(override)
+            .build();
+
+        return createAggregatedRelease(repository, tag, releaseNotes, releaseOptions);
     }
 
     /**
@@ -268,6 +276,175 @@ public interface ReleaseConnector extends Connector {
 
         public static ReleaseResult fail(RuntimeException error) {
             return new ReleaseResult(null, null, error);
+        }
+    }
+
+    /**
+     * @author Mislav Milicevic
+     */
+    class BranchReleaseOptions {
+        public static final BranchReleaseOptions DEFAULT = new BranchReleaseOptions(
+            new ArrayList<>(),
+            false,
+            false
+        );
+
+        private final List<String> ignoredLabels;
+        private final boolean overrideRelease;
+        private final boolean includeIssuesWithoutClosingKeyword;
+
+        private BranchReleaseOptions(List<String> ignoredLabels, boolean overrideRelease, boolean includeIssuesWithoutClosingKeyword) {
+            this.ignoredLabels = ignoredLabels;
+            this.overrideRelease = overrideRelease;
+            this.includeIssuesWithoutClosingKeyword = includeIssuesWithoutClosingKeyword;
+        }
+
+        public List<String> getIgnoredLabels() {
+            return ignoredLabels;
+        }
+
+        public boolean overrideRelease() {
+            return overrideRelease;
+        }
+
+        public boolean includeIssuesWithoutClosingKeyword() {
+            return includeIssuesWithoutClosingKeyword;
+        }
+
+        public static final class Builder {
+            private final List<String> ignoredLabels = new ArrayList<>();
+
+            private boolean overrideRelease;
+            private boolean includeIssuesWithoutClosingKeyword;
+
+            public Builder ignoreLabels(String... labels) {
+                requireNonNull(labels);
+
+                ignoredLabels.addAll(Arrays.asList(labels));
+                return this;
+            }
+
+            public Builder ignoreLabels(List<String> labels) {
+                requireNonNull(labels);
+
+                ignoredLabels.addAll(labels);
+                return this;
+            }
+
+            public Builder overrideRelease(boolean overrideRelease) {
+                this.overrideRelease = overrideRelease;
+
+                return this;
+            }
+
+            public Builder includeIssuesWithoutClosingKeyword(boolean includeIssuesWithoutClosingKeyword) {
+                this.includeIssuesWithoutClosingKeyword = includeIssuesWithoutClosingKeyword;
+
+                return this;
+            }
+
+            public BranchReleaseOptions build() {
+                return new BranchReleaseOptions(
+                    ignoredLabels,
+                    overrideRelease,
+                    includeIssuesWithoutClosingKeyword
+                );
+            }
+        }
+    }
+
+    /**
+     * @author Mislav Milicevic
+     */
+    class MilestoneReleaseOptions {
+        public static final MilestoneReleaseOptions DEFAULT = new MilestoneReleaseOptions(
+            new ArrayList<>(),
+            false
+        );
+
+        private final List<String> ignoredLabels;
+        private final boolean overrideRelease;
+
+        private MilestoneReleaseOptions(List<String> ignoredLabels, boolean overrideRelease) {
+            this.ignoredLabels = ignoredLabels;
+            this.overrideRelease = overrideRelease;
+        }
+
+        public List<String> getIgnoredLabels() {
+            return ignoredLabels;
+        }
+
+        public boolean overrideRelease() {
+            return overrideRelease;
+        }
+
+        public static final class Builder {
+            private final List<String> ignoredLabels = new ArrayList<>();
+
+            private boolean overrideRelease;
+
+            public Builder ignoreLabels(String... labels) {
+                requireNonNull(labels);
+
+                ignoredLabels.addAll(Arrays.asList(labels));
+                return this;
+            }
+
+            public Builder ignoreLabels(List<String> labels) {
+                requireNonNull(labels);
+
+                ignoredLabels.addAll(labels);
+                return this;
+            }
+
+            public Builder overrideRelease(boolean overrideRelease) {
+                this.overrideRelease = overrideRelease;
+
+                return this;
+            }
+
+            public MilestoneReleaseOptions build() {
+                return new MilestoneReleaseOptions(
+                    ignoredLabels,
+                    overrideRelease
+                );
+            }
+        }
+    }
+
+    /**
+     * @author Mislav Milicevic
+     */
+    class AggregateReleaseOptions {
+        public static final AggregateReleaseOptions DEFAULT = new AggregateReleaseOptions(
+            false
+        );
+
+        private final boolean overrideRelease;
+
+        private AggregateReleaseOptions(boolean overrideRelease) {
+            this.overrideRelease = overrideRelease;
+        }
+
+        public boolean overrideRelease() {
+            return overrideRelease;
+        }
+
+        public static final class Builder {
+
+            private boolean overrideRelease;
+
+            public Builder overrideRelease(boolean overrideRelease) {
+                this.overrideRelease = overrideRelease;
+
+                return this;
+            }
+
+            public AggregateReleaseOptions build() {
+                return new AggregateReleaseOptions(
+                    overrideRelease
+                );
+            }
         }
     }
 }

@@ -5,6 +5,8 @@ import net.openhft.chronicle.releasenotes.connector.ConnectorProvider;
 import net.openhft.chronicle.releasenotes.connector.ConnectorProviderFactory;
 import net.openhft.chronicle.releasenotes.connector.ConnectorProviderKeys;
 import net.openhft.chronicle.releasenotes.connector.ReleaseConnector;
+import net.openhft.chronicle.releasenotes.connector.ReleaseConnector.BranchReleaseOptions;
+import net.openhft.chronicle.releasenotes.connector.ReleaseConnector.MilestoneReleaseOptions;
 import net.openhft.chronicle.releasenotes.connector.ReleaseConnector.ReleaseResult;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -67,6 +69,13 @@ public final class ReleaseCommand implements Runnable {
     private boolean override;
 
     @Option(
+        names = {"-c", "--requireCloseReference"},
+        description = "Specifies if an issue needs to be closed through a commit to be included in the generated release notes",
+        defaultValue = "false"
+    )
+    private boolean requireCloseReference;
+
+    @Option(
         names = {"-T", "--token"},
         description = "Specifies a GitHub personal access token used to gain access to the GitHub API",
         required = true,
@@ -103,9 +112,15 @@ public final class ReleaseCommand implements Runnable {
             throw new RuntimeException("Using branch source, but no branch was specified: use --branch to specify target branch");
         }
 
+        final BranchReleaseOptions releaseOptions = new BranchReleaseOptions.Builder()
+            .ignoreLabels(ignoreLabels)
+            .overrideRelease(override)
+            .includeIssuesWithoutClosingKeyword(!requireCloseReference)
+            .build();
+
         final ReleaseResult releaseResult = (endTag == null || endTag.isEmpty())
-            ? releaseConnector.createReleaseFromBranch(repository, tag, branch, ignoreLabels, override)
-            : releaseConnector.createReleaseFromBranch(repository, tag, endTag, branch, ignoreLabels, override);
+            ? releaseConnector.createReleaseFromBranch(repository, tag, branch, releaseOptions)
+            : releaseConnector.createReleaseFromBranch(repository, tag, endTag, branch, releaseOptions);
 
         releaseResult.throwIfFail();
 
@@ -117,7 +132,12 @@ public final class ReleaseCommand implements Runnable {
             throw new RuntimeException("Using milestone source, but no milestone was specified: use --milestone to specify target milestone");
         }
 
-        final ReleaseResult releaseResult = releaseConnector.createReleaseFromMilestone(repository, tag, milestone, ignoreLabels, override);
+        final MilestoneReleaseOptions releaseOptions = new MilestoneReleaseOptions.Builder()
+            .ignoreLabels(ignoreLabels)
+            .overrideRelease(override)
+            .build();
+        
+        final ReleaseResult releaseResult = releaseConnector.createReleaseFromMilestone(repository, tag, milestone, releaseOptions);
 
         releaseResult.throwIfFail();
 

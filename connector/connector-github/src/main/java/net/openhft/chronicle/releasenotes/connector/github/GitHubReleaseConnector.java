@@ -8,7 +8,6 @@ import static java.util.stream.Collectors.toMap;
 
 import net.openhft.chronicle.releasenotes.connector.ConnectorProviderKey;
 import net.openhft.chronicle.releasenotes.connector.ReleaseConnector;
-import net.openhft.chronicle.releasenotes.connector.ReleaseOptions;
 import net.openhft.chronicle.releasenotes.connector.exception.TagNotFoundException;
 import net.openhft.chronicle.releasenotes.creator.ReleaseNoteCreator;
 import net.openhft.chronicle.releasenotes.model.Issue;
@@ -72,18 +71,24 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
     }
 
     @Override
-    public ReleaseResult createReleaseFromBranch(String repository, String tag, String branch, ReleaseOptions releaseOptions) {
+    public ReleaseResult createReleaseFromBranch(String repository, String tag, String branch, BranchReleaseOptions releaseOptions) {
         requireNonNull(repository);
         requireNonNull(tag);
         requireNonNull(branch);
 
         final GHRepository repositoryRef = getRepository(repository);
 
-        return createRelease(repositoryRef, tag, () -> getIssuesForBranch(repositoryRef, branch, tag, releaseOptions.includeIssuesWithoutClosingKeyword()), releaseOptions);
+        return createRelease(
+            repositoryRef,
+            tag,
+            () -> getIssuesForBranch(repositoryRef, branch, tag, releaseOptions.includeIssuesWithoutClosingKeyword()),
+            releaseOptions.getIgnoredLabels(),
+            releaseOptions.overrideRelease()
+        );
     }
 
     @Override
-    public ReleaseResult createReleaseFromBranch(String repository, String tag, String endTag, String branch, ReleaseOptions releaseOptions) {
+    public ReleaseResult createReleaseFromBranch(String repository, String tag, String endTag, String branch, BranchReleaseOptions releaseOptions) {
         requireNonNull(repository);
         requireNonNull(tag);
         requireNonNull(endTag);
@@ -91,22 +96,33 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
 
         final GHRepository repositoryRef = getRepository(repository);
 
-        return createRelease(repositoryRef, tag, () -> getIssuesForBranch(repositoryRef, branch, tag, endTag, releaseOptions.includeIssuesWithoutClosingKeyword()), releaseOptions);
+        return createRelease(
+            repositoryRef,
+            tag,
+            () -> getIssuesForBranch(repositoryRef, branch, tag, endTag, releaseOptions.includeIssuesWithoutClosingKeyword()),
+            releaseOptions.getIgnoredLabels(),
+            releaseOptions.overrideRelease()
+        );
     }
 
     @Override
-    public ReleaseResult createReleaseFromMilestone(String repository, String tag, String milestone, ReleaseOptions releaseOptions) {
+    public ReleaseResult createReleaseFromMilestone(String repository, String tag, String milestone, MilestoneReleaseOptions releaseOptions) {
         requireNonNull(repository);
         requireNonNull(tag);
         requireNonNull(milestone);
 
         final GHRepository repositoryRef = getRepository(repository);
 
-        return createRelease(repositoryRef, tag, () -> getClosedMilestoneIssues(repositoryRef, milestone), releaseOptions);
+        return createRelease(
+            repositoryRef,
+            tag, () -> getClosedMilestoneIssues(repositoryRef, milestone),
+            releaseOptions.getIgnoredLabels(),
+            releaseOptions.overrideRelease()
+        );
     }
 
     @Override
-    public ReleaseResult createAggregatedRelease(String repository, String tag, Map<String, List<String>> releases, boolean override) {
+    public ReleaseResult createAggregatedRelease(String repository, String tag, Map<String, List<String>> releases, AggregateReleaseOptions releaseOptions) {
         requireNonNull(repository);
         requireNonNull(tag);
         requireNonNull(releases);
@@ -142,8 +158,8 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
                 .collect(toList());
 
             if (remoteRelease != null) {
-                if (!override) {
-                    throw new RuntimeException("Release for tag '" + tag + "' already exists: use --override to force an override of an existing release");
+                if (!releaseOptions.overrideRelease()) {
+                    throw new RuntimeException("Release for tag '" + tag + "' already exists");
                 }
 
                 final ReleaseNote releaseNote = releaseNoteCreator.createAggregatedReleaseNote(tag, normalizedReleaseNotes);
@@ -170,7 +186,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
     }
 
     @Override
-    public ReleaseResult createAggregatedRelease(String repository, String tag, List<ReleaseNote> releaseNotes, boolean override) {
+    public ReleaseResult createAggregatedRelease(String repository, String tag, List<ReleaseNote> releaseNotes, AggregateReleaseOptions releaseOptions) {
         requireNonNull(repository);
         requireNonNull(tag);
         requireNonNull(releaseNotes);
@@ -185,8 +201,8 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
             final GHRelease remoteRelease = repositoryRef.getReleaseByTagName(tag);
 
             if (remoteRelease != null) {
-                if (!override) {
-                    throw new RuntimeException("Release for tag '" + tag + "' already exists: use --override to force an override of an existing release");
+                if (!releaseOptions.overrideRelease()) {
+                    throw new RuntimeException("Release for tag '" + tag + "' already exists");
                 }
 
                 final ReleaseNote releaseNote = releaseNoteCreator.createAggregatedReleaseNote(tag, releaseNotes);
@@ -217,8 +233,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
         return GitHubConnectorProviderKey.class;
     }
 
-    private ReleaseResult createRelease(
-            GHRepository repository, String tag, Supplier<List<GHIssue>> issueSupplier, ReleaseOptions releaseOptions) {
+    private ReleaseResult createRelease(GHRepository repository, String tag, Supplier<List<GHIssue>> issueSupplier, List<String> ignoredLabels, boolean override) {
         requireNonNull(repository);
         requireNonNull(tag);
         requireNonNull(issueSupplier);
@@ -231,11 +246,11 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
             final GHRelease remoteRelease = repository.getReleaseByTagName(tag);
 
             if (remoteRelease != null) {
-                if (!releaseOptions.overrideRelease()) {
-                    throw new RuntimeException("Release for tag '" + tag + "' already exists: use --override to force an override of an existing release");
+                if (override) {
+                    throw new RuntimeException("Release for tag '" + tag + "' already exists");
                 }
 
-                final List<Issue> issues = filterIssueLabels(issueSupplier.get(), releaseOptions.getIgnoredLabels())
+                final List<Issue> issues = filterIssueLabels(issueSupplier.get(), ignoredLabels)
                     .stream()
                     .map(this::mapIssue)
                     .collect(toList());
@@ -250,7 +265,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
                 return ReleaseResult.success(releaseNote, release.getHtmlUrl());
             }
 
-            final List<Issue> issues = filterIssueLabels(issueSupplier.get(), releaseOptions.getIgnoredLabels())
+            final List<Issue> issues = filterIssueLabels(issueSupplier.get(), ignoredLabels)
                 .stream()
                 .map(this::mapIssue)
                 .collect(toList());

@@ -9,6 +9,7 @@ import net.openhft.chronicle.releasenotes.connector.ConnectorProvider;
 import net.openhft.chronicle.releasenotes.connector.ConnectorProviderFactory;
 import net.openhft.chronicle.releasenotes.connector.ConnectorProviderKeys;
 import net.openhft.chronicle.releasenotes.connector.ReleaseConnector;
+import net.openhft.chronicle.releasenotes.connector.ReleaseConnector.AggregateReleaseOptions;
 import net.openhft.chronicle.releasenotes.connector.ReleaseConnector.ReleaseResult;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -71,7 +72,11 @@ public final class AggregateCommand implements Runnable {
             .distinct()
             .collect(groupingBy(ReleaseReference::getRepository, mapping(ReleaseReference::getRelease, Collectors.toList())));
 
-        final ReleaseResult releaseResult = releaseConnector.createAggregatedRelease(repository, tag, releaseRef, override);
+        final AggregateReleaseOptions releaseOptions = new AggregateReleaseOptions.Builder()
+            .overrideRelease(override)
+            .build();
+
+        final ReleaseResult releaseResult = releaseConnector.createAggregatedRelease(repository, tag, releaseRef, releaseOptions);
 
         releaseResult.throwIfFail();
 

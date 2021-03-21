@@ -5,11 +5,12 @@ import net.openhft.chronicle.releasenotes.connector.ConnectorProvider;
 import net.openhft.chronicle.releasenotes.connector.ConnectorProviderFactory;
 import net.openhft.chronicle.releasenotes.connector.ConnectorProviderKeys;
 import net.openhft.chronicle.releasenotes.connector.MigrateConnector;
+import net.openhft.chronicle.releasenotes.connector.MigrateConnector.MigrateOptions;
 import net.openhft.chronicle.releasenotes.connector.MigrateConnector.MigrateResult;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
-import java.util.Set;
+import java.util.List;
 
 @Command(
     name = "migrate",
@@ -24,7 +25,7 @@ public final class MigrateCommand implements Runnable {
         split = ",",
         arity = "1..*"
     )
-    private Set<String> from;
+    private List<String> from;
 
     @Option(
         names = {"-t", "--to"},
@@ -39,7 +40,7 @@ public final class MigrateCommand implements Runnable {
         split = ",",
         arity = "1..*"
     )
-    private Set<String> ignoreLabels;
+    private List<String> ignoreLabels;
 
     @Option(
         names = {"-T", "--token"},
@@ -61,7 +62,11 @@ public final class MigrateCommand implements Runnable {
         final MigrateConnector migrateConnector = migrateConnectorProvider.connect(token)
             .orElseThrow(() -> new RuntimeException("Failed to connect to GitHub"));
 
-        final MigrateResult migrateResult = migrateConnector.migrateMilestones(repository, from, to, ignoreLabels);
+        final MigrateOptions migrateOptions = new MigrateOptions.Builder()
+            .ignoreLabels(ignoreLabels)
+            .build();
+
+        final MigrateResult migrateResult = migrateConnector.migrateMilestones(repository, from, to, migrateOptions);
 
         migrateResult.throwIfFail();
     }

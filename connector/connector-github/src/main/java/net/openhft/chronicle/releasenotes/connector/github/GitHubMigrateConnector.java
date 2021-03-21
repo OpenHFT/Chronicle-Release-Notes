@@ -15,7 +15,6 @@ import org.kohsuke.github.GitHubBuilder;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -36,7 +35,7 @@ public final class GitHubMigrateConnector implements MigrateConnector {
     }
 
     @Override
-    public MigrateResult migrateMilestones(String repository, Set<String> fromMilestones, String toMilestone, Set<String> ignoredLabels) {
+    public MigrateResult migrateMilestones(String repository, List<String> fromMilestones, String toMilestone, MigrateOptions migrateOptions) {
         requireNonNull(repository);
         requireNonNull(fromMilestones);
         requireNonNull(toMilestone);
@@ -45,7 +44,7 @@ public final class GitHubMigrateConnector implements MigrateConnector {
         final Map<String, GHMilestone> milestonesRef = getMilestones(repositoryRef, fromMilestones);
         final GHMilestone toMilestoneRef = getMilestone(repositoryRef, toMilestone);
 
-        final List<GHIssue> issues = getMilestoneIssues(repositoryRef, (List<GHMilestone>) milestonesRef.values(), ignoredLabels);
+        final List<GHIssue> issues = getMilestoneIssues(repositoryRef, (List<GHMilestone>) milestonesRef.values(), migrateOptions.getIgnoredLabels());
 
         final AtomicReference<MigrateResult> migrateResult = new AtomicReference<>(MigrateResult.success());
 
@@ -77,7 +76,7 @@ public final class GitHubMigrateConnector implements MigrateConnector {
         }
     }
 
-    private Map<String, GHMilestone> getMilestones(GHRepository repository, Set<String> milestones) {
+    private Map<String, GHMilestone> getMilestones(GHRepository repository, List<String> milestones) {
         requireNonNull(repository);
         requireNonNull(milestones);
 
@@ -106,7 +105,7 @@ public final class GitHubMigrateConnector implements MigrateConnector {
             .orElseThrow(() -> new RuntimeException("Milestone '" + milestone + "' not found"));
     }
 
-    private List<GHIssue> getMilestoneIssues(GHRepository repository, List<GHMilestone> milestones, Set<String> ignoredLabels) {
+    private List<GHIssue> getMilestoneIssues(GHRepository repository, List<GHMilestone> milestones, List<String> ignoredLabels) {
         requireNonNull(repository);
         requireNonNull(milestones);
 
