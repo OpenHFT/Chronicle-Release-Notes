@@ -246,7 +246,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
             final GHRelease remoteRelease = repository.getReleaseByTagName(tag);
 
             if (remoteRelease != null) {
-                if (override) {
+                if (!override) {
                     throw new RuntimeException("Release for tag '" + tag + "' already exists");
                 }
 
