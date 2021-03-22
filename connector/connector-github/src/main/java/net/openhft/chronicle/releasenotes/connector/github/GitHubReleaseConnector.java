@@ -25,8 +25,10 @@ import org.kohsuke.github.GHTag;
 import org.kohsuke.github.GitHub;
 import org.kohsuke.github.GitHubBuilder;
 import org.kohsuke.github.PagedIterable;
+import org.kohsuke.github.RateLimitHandler;
 
 import java.io.IOException;
+import java.net.HttpURLConnection;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -66,6 +68,12 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
     public GitHubReleaseConnector(String token) throws IOException {
         this.github = new GitHubBuilder()
             .withOAuthToken(requireNonNull(token))
+            .withRateLimitHandler(new RateLimitHandler() {
+                @Override
+                public void onError(IOException e, HttpURLConnection uc) throws IOException {
+                    throw e;
+                }
+            })
             .build();
         this.releaseNoteCreator = ReleaseNoteCreator.markdown();
     }
