@@ -515,14 +515,18 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
                 if (isLocalIssueReference(tokenToCheck)) {
                     ids.add(Integer.valueOf(tokenToCheck.substring(1)));
 
-                    i++;
+                    if (!includeIssuesWithoutClosingKeyword) {
+                        i++;
+                    }
                     continue;
                 }
 
                 if (isUrlIssueReference(commit.getOwner(), tokenToCheck)) {
                     ids.add(Integer.valueOf(tokenToCheck.substring(tokenToCheck.lastIndexOf("/") + 1)));
 
-                    i++;
+                    if (!includeIssuesWithoutClosingKeyword) {
+                        i++;
+                    }
                 }
             }
 
