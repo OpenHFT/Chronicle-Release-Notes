@@ -330,7 +330,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
         final List<String> tagSet = Arrays.asList(tags);
 
         try {
-            final Map<String, GHTag> collectedTags = stream(repository.listTags())
+            final Map<String, GHTag> collectedTags = stream(repository.listTags().withPageSize(REQUEST_PAGE_SIZE))
                 .filter(ghTag -> tagSet.contains(ghTag.getName()))
                 .collect(Collectors.toMap(GHTag::getName, Function.identity()));
 
@@ -356,7 +356,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
         final Date tagDate = getCommitDate(tag.getCommit());
 
         try {
-            return stream(repository.listTags())
+            return stream(repository.listTags().withPageSize(REQUEST_PAGE_SIZE))
                 .filter(ghTag -> getCommitDate(ghTag.getCommit()).before(tagDate))
                 .filter(ghTag -> isTagOnBranch(repository, ghTag, branch))
                 .sorted(comparing(tag2 -> getCommitDate(tag2.getCommit()), reverseOrder()))
@@ -372,7 +372,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
         requireNonNull(tag);
 
         try {
-            return stream(repository.listTags())
+            return stream(repository.listTags().withPageSize(REQUEST_PAGE_SIZE))
                     .anyMatch(ghTag -> ghTag.getName().equals(tag));
         } catch (IOException e) {
             return false;
@@ -455,7 +455,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
                 commitQueryBuilder.since(getCommitDate(endCommit));
             }
 
-            final List<GHCommit> commits = commitQueryBuilder.list().toList();
+            final List<GHCommit> commits = commitQueryBuilder.list().withPageSize(REQUEST_PAGE_SIZE).toList();
 
             if (commits.stream().noneMatch(commit -> commit.getSHA1().equals(startCommit.getSHA1()))) {
                 throw new RuntimeException("Tag '" + startTag + "' not found on branch '" + branch + "'");
@@ -581,7 +581,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
     private List<GHIssue> getIssuesFromIds(GHRepository repository, List<Integer> ids) {
         requireNonNull(repository);
 
-        return stream(repository.listIssues(GHIssueState.ALL))
+        return stream(repository.listIssues(GHIssueState.ALL).withPageSize(REQUEST_PAGE_SIZE))
                 .filter(ghIssue -> ids.contains(ghIssue.getNumber()))
                 .collect(toList());
     }
@@ -614,7 +614,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
 
         final GHMilestone milestoneRef = getMilestone(repository, milestone);
 
-        return stream(repository.listIssues(GHIssueState.CLOSED))
+        return stream(repository.listIssues(GHIssueState.CLOSED).withPageSize(REQUEST_PAGE_SIZE))
             .filter(ghIssue -> ghIssue.getMilestone() != null && ghIssue.getMilestone().getNumber() == milestoneRef.getNumber())
             .collect(toList());
     }
@@ -623,7 +623,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
         requireNonNull(repository);
         requireNonNull(milestone);
 
-        return stream(repository.listMilestones(GHIssueState.ALL))
+        return stream(repository.listMilestones(GHIssueState.ALL).withPageSize(REQUEST_PAGE_SIZE))
             .filter(ghMilestone -> ghMilestone.getTitle().equals(milestone))
             .findAny()
             .orElseThrow(() -> new RuntimeException("Milestone '" + milestone + "' not found"));
