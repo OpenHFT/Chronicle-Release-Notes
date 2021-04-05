@@ -12,12 +12,28 @@
 
     <name>Chronicle Release Notes - Connector - GitHub</name>
 
+    <properties>
+        <maven.javadoc.skip>true</maven.javadoc.skip>
+    </properties>
+
     <dependencyManagement>
         <dependencies>
             <dependency>
                 <groupId>org.kohsuke</groupId>
                 <artifactId>github-api</artifactId>
                 <version>1.117</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.apollographql.apollo</groupId>
+                <artifactId>apollo-runtime</artifactId>
+                <version>2.3.1</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.squareup.okio</groupId>
+                <artifactId>okio</artifactId>
+                <version>2.8.0</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -37,6 +53,52 @@
             <groupId>org.kohsuke</groupId>
             <artifactId>github-api</artifactId>
         </dependency>
+
+        <dependency>
+            <groupId>com.apollographql.apollo</groupId>
+            <artifactId>apollo-runtime</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.squareup.okio</groupId>
+            <artifactId>okio</artifactId>
+        </dependency>
     </dependencies>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>com.github.sparow199</groupId>
+                    <artifactId>apollo-client-maven-plugin</artifactId>
+                    <version>3.3.1</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+
+        <plugins>
+            <plugin>
+                <groupId>com.github.sparow199</groupId>
+                <artifactId>apollo-client-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <configuration>
+                            <rootPackageName>net.openhft.chronicle.releasenotes.connector.github.graphql</rootPackageName>
+                            <sourceDirName>${project.basedir}/graphql</sourceDirName>
+                            <introspectionFile>${project.basedir}/graphql/__introspection__.json</introspectionFile>
+                            <generateIntrospectionFile>true</generateIntrospectionFile>
+                            <schemaUrl>https://api.github.com/graphql</schemaUrl>
+                            <customHeaders>
+                                <Authorization>Bearer ${github.token}</Authorization>
+                            </customHeaders>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>

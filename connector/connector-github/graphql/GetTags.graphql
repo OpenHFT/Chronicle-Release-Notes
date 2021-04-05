@@ -1,0 +1,21 @@
+query GetTags($owner: String!, $repository: String!, $amount: Int = 100) {
+    repository(owner: $owner, name: $repository) {
+        refs(refPrefix: "refs/tags/", first: $amount, orderBy: {field: TAG_COMMIT_DATE, direction: DESC}) {
+            edges {
+                node {
+                    name
+                    target {
+                        oid
+                        ... on Tag {
+                            target {
+                                ... on Commit {
+                                    oid
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

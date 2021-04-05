@@ -32,3 +32,6 @@ dependency-reduced-pom.xml
 
 # MacOS
 *.DS_Store
+
+# GraphQL
+__introspection__.json

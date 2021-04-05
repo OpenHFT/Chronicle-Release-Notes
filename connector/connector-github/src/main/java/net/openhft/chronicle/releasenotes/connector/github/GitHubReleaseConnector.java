@@ -1,7 +1,5 @@
 package net.openhft.chronicle.releasenotes.connector.github;
 
-import static java.util.Comparator.comparing;
-import static java.util.Comparator.reverseOrder;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
@@ -9,6 +7,8 @@ import static java.util.stream.Collectors.toMap;
 import net.openhft.chronicle.releasenotes.connector.ConnectorProviderKey;
 import net.openhft.chronicle.releasenotes.connector.ReleaseConnector;
 import net.openhft.chronicle.releasenotes.connector.exception.TagNotFoundException;
+import net.openhft.chronicle.releasenotes.connector.github.graphql.GitHubGraphQLClient;
+import net.openhft.chronicle.releasenotes.connector.github.graphql.model.Tag;
 import net.openhft.chronicle.releasenotes.creator.ReleaseNoteCreator;
 import net.openhft.chronicle.releasenotes.model.Issue;
 import net.openhft.chronicle.releasenotes.model.Label;
@@ -38,7 +38,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
-import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -63,11 +62,14 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
     );
 
     private final GitHub github;
+    private final GitHubGraphQLClient graphQLClient;
     private final ReleaseNoteCreator releaseNoteCreator;
 
     public GitHubReleaseConnector(String token) throws IOException {
+        requireNonNull(token);
+
         this.github = new GitHubBuilder()
-            .withOAuthToken(requireNonNull(token))
+            .withOAuthToken(token)
             .withRateLimitHandler(new RateLimitHandler() {
                 @Override
                 public void onError(IOException e, HttpURLConnection uc) throws IOException {
@@ -75,6 +77,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
                 }
             })
             .build();
+        this.graphQLClient = new GitHubGraphQLClient(token);
         this.releaseNoteCreator = ReleaseNoteCreator.markdown();
     }
 
@@ -330,12 +333,16 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
         final List<String> tagSet = Arrays.asList(tags);
 
         try {
-            final Map<String, GHTag> collectedTags = stream(repository.listTags().withPageSize(REQUEST_PAGE_SIZE))
-                .filter(ghTag -> tagSet.contains(ghTag.getName()))
-                .collect(Collectors.toMap(GHTag::getName, Function.identity()));
+            final Map<String, GHTag> collectedTags = new HashMap<>();
 
-            if (collectedTags.size() == tags.length) {
-                return collectedTags;
+            for (GHTag tag : repository.listTags().withPageSize(REQUEST_PAGE_SIZE)) {
+                if (tagSet.contains(tag.getName())) {
+                    collectedTags.put(tag.getName(), tag);
+                }
+
+                if (collectedTags.size() == tagSet.size()) {
+                    return collectedTags;
+                }
             }
 
             final String missingTags = Arrays.stream(tags)
@@ -353,18 +360,23 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
         requireNonNull(branch);
         requireNonNull(tag);
 
-        final Date tagDate = getCommitDate(tag.getCommit());
+        final List<String> commits = getCommitsForBranchFromTag(repository, branch, tag)
+            .stream()
+            .map(GHCommit::getSHA1)
+            .collect(toList());
 
-        try {
-            return stream(repository.listTags().withPageSize(REQUEST_PAGE_SIZE))
-                .filter(ghTag -> getCommitDate(ghTag.getCommit()).before(tagDate))
-                .filter(ghTag -> isTagOnBranch(repository, ghTag, branch))
-                .sorted(comparing(tag2 -> getCommitDate(tag2.getCommit()), reverseOrder()))
-                .limit(1)
-                .findFirst();
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to fetch tags for repository '" + repository.getFullName() + "'");
+        final String tagName = graphQLClient.getTags(repository.getOwnerName(), repository.getName()).stream()
+            .filter(t -> commits.contains(t.getCommitSHA1()) && !t.getName().equals(tag.getName()))
+            .limit(1)
+            .findFirst()
+            .map(Tag::getName)
+            .orElse(null);
+
+        if (tagName == null) {
+            return Optional.empty();
         }
+
+        return Optional.of(getTags(repository, tagName).get(tagName));
     }
 
     private boolean checkTagExists(GHRepository repository, String tag) {
@@ -396,8 +408,8 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
 
         try {
             final PagedIterable<GHCommit> commits =  repository.queryCommits()
-                .from(branch.getSHA1())
-                .since(getCommitDate(tag.getCommit()))
+                .from(branch.getName())
+                .until(getCommitDate(tag.getCommit()))
                 .pageSize(REQUEST_PAGE_SIZE)
                 .list();
 
