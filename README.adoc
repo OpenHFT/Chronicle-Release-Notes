@@ -1,114 +1,113 @@
 = Chronicle Release Notes
 
-Chronicle Release Notes is a simple CLI utility designed to automate the generation of release notes for GitHub repositories.
-
-The CLI uses GitHub's milestone system to determine which issues should be included in the generated release notes.
+Chronicle Release Notes is a library and CLI utility designed to automate the generation of release notes for GitHub repositories.
 
 == Requirements
 
-Before using the Chronicle Release Notes CLI, make sure you have the following installed on your system:
+Before using the Chronicle Release Notes, make sure you have the following installed on your system:
 
 - link:https://www.oracle.com/java/technologies/javase/javase-jdk8-downloads.html[Java 8]
-- link:https://maven.apache.org/[Maven]
+- link:https://maven.apache.org/[Maven]/link:https://gradle.org/[Gradle]
 
-== Build from Source
+== Installation
 
-To build the CLI from source, run the following command from the terminal:
+Maven:
 
-[source, text]
-----
-mvn clean install
-----
+```xml
+<dependencies>
+    ...
+    <dependency>
+        <groupId>net.openhft</groupId>
+        <artifactId>chronicle-release-notes-connector-all</artifactId>
+        <version>${chronicle-release-notes.version}</version>
+    </dependency>
+    ...
+</dependencies>
+```
 
-This will create an executable JAR in the `target` folder called `chronicle-release-notes.jar`
+Gradle:
 
-To test that everything was created correctly, you can run the following command from the terminal:
+```groovy
+dependencies {
+    ...
+    implementation "net.openhft:chronicle-release-notes-connector-all:${chronicle-release-notes.version}"
+    ...
+}
+```
 
-[source, text]
-----
-java -jar cli/target/chronicle-release-notes.jar --version
-----
+== Connecting to GitHub
 
-If everything was created correctly, you should see a version number printed out.
+Before a release can be created, we must first gain access to GitHub's API. That can be done using the following code:
 
-== Native Build
+```java
+final ConnectorProvider<ReleaseConnector> releaseConnectorProvider = ConnectorProviderFactory.getInstance()
+    .getReleaseConnectorProvider(ConnectorProviderKeys.GITHUB)
+    .orElseThrow(() -> new RuntimeException("Failed to find GitHub release provider"));
 
-In order to reduce the amount of dependencies needed to use the Chronicle Release Notes CLI, there is a way to build it as a native image.
+final ReleaseConnector releaseConnector = releaseConnectorProvider.connect("YOUR_PERSONAL_ACCESS_TOKEN")
+    .orElseThrow(() -> new RuntimeException("Failed to connect to GitHub"));
+```
 
-=== Requirements
+== Creating a release
 
-Before being able to build the CLI as a native image, make sure you have the following installed on your system:
+With Chronicle Release Notes, users are able to create releases from 2 sources - branches and milestones:
 
-- link:https://github.com/graalvm/graalvm-ce-builds/releases/tag/vm-21.0.0[GraalVM (Java 8)]
-- link:https://www.graalvm.org/reference-manual/native-image/#install-native-image[Native Image]
-- link:https://maven.apache.org/[Maven]
+=== Creating a release from a branch source
 
-=== Build
+```java
+final ReleaseResult releaseResult = releaseConnector.createReleaseFromBranch("owner/repository", "1.0.0", "master");
 
-To create the native image, run the following command from the terminal:
+releaseResult.throwIfFail();
+```
 
-[source, text]
-----
-mvn clean install -Pnative
-----
+==== Overriding existing releases
+```java
+final BranchReleaseOptions releaseOptions = new BranchReleaseOptions.Builder()
+    .overrideRelease(true)
+    .build();
 
-The created image is located in the `target` folder of the `cli` module, and it's called `chronicle-release-notes`
+final ReleaseResult releaseResult = releaseConnector.createReleaseFromBranch("owner/repository", "1.0.0", "master", releaseOptions);
 
-=== Linux/macOS Installation
+releaseResult.throwIfFail();
+```
 
-To install the built image on your Linux/macOS system, you can run the following command from the terminal:
+==== Ignoring issues with specific labels
+```java
+final BranchReleaseOptions releaseOptions = new BranchReleaseOptions.Builder()
+    .ignoreLabels("wontfix")
+    .build();
 
-[source, text]
-----
-mv cli/target/chronicle-release-notes /usr/local/bin; source /usr/local/bin
-----
+final ReleaseResult releaseResult = releaseConnector.createReleaseFromBranch("owner/repository", "1.0.0", "master", releaseOptions);
 
-To test that image was installed correctly, you can run the following command from the terminal:
+releaseResult.throwIfFail();
+```
 
-[source, text]
-----
-chronicle-release-notes --version
-----
+=== Creating a release from a milestone source
 
-If everything was created correctly, you should see a version number printed out.
+```java
+final ReleaseResult = releaseConnector.createReleaseFromMilestone("owner/respository", "1.0.0", "milestone1");
 
-== Commands
+releaseResult.throwIfFail();
+```
 
-- **release** - generates release notes for a specific tag
-- **aggregate** - generates aggregated release notes from a set of releases
-- **migrate** - migrates issues from one or more milestones to a target milestone
+==== Overriding existing releases
+```java
+final MilestoneReleaseOptions releaseOptions = new MilestoneReleaseOptions.Builder()
+    .overrideRelease(true)
+    .build();
 
-=== Release options
+final ReleaseResult releaseResult = releaseConnector.createReleaseFromMilestone("owner/repository", "1.0.0", "milestone1", releaseOptions);
 
-[options="header"]
-|===
-^| Option ^| Presence ^| Description
-| **tag** | required | Specifies a tag for which the release notes will get generated. When using source BRANCH, the tag is used as a start point for the scanned commits
-| **endTag** | optional | Specifies the ending tag for the scanned commits when using source BRANCH
-| **source** | optional | Specifies the source used to fetch the issues included in the generated release notes. Valid source values: BRANCH, MILESTONE (Default: BRANCH)
-| **branch** | required (source BRANCH) | Specifies a branch that will be used as a reference for the issues included in the generated release notes
-| **milestone** | required (source MILESTONE) | Specifies a milestone that will be used as a reference for the issues included in the generated release notes
-| **ignoreLabels** | optional | Specifies which issues to ignore based on the provided label names
-| **token** | required | Specifies a GitHub personal access token used to gain access to the GitHub API
-|===
+releaseResult.throwIfFail();
+```
 
-=== Aggregate options
+==== Ignoring issues with specific labels
+```java
+final MilestoneReleaseOptions releaseOptions = new MilestoneReleaseOptions.Builder()
+    .ignoreLabels("wontfix")
+    .build();
 
-[options="header"]
-|===
-^| Option ^| Presence ^| Description
-| **tag** | required | Specifies a tag for which the release notes will get generated
-| **releases** | required | Specifies a set of releases that will be included in the generated release notes
-| **token** | required | Specifies a GitHub personal access token used to gain access to the GitHub API
-|===
+final ReleaseResult releaseResult = releaseConnector.createReleaseFromMilestone("owner/repository", "1.0.0", "milestone1", releaseOptions);
 
-=== Migrate options
-
-[options="header"]
-|===
-^| Option ^| Presence ^| Description
-| **from** | required | Specifies one or more milestones that will be used as a migration source
-| **to** | required| Specifies a milestone that will be used as a migration destination
-| **ignoreLabels** | optional | Specifies which issues to ignore based on the provided label names
-| **token** | required | Specifies a GitHub personal access token used to gain access to the GitHub API
-|===
+releaseResult.throwIfFail();
+```
