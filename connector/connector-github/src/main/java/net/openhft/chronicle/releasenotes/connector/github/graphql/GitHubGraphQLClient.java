@@ -9,6 +9,7 @@ import com.apollographql.apollo.api.Input;
 import com.apollographql.apollo.api.Response;
 import com.apollographql.apollo.exception.ApolloException;
 import net.openhft.chronicle.releasenotes.connector.github.graphql.GetTagsQuery.AsCommit;
+import net.openhft.chronicle.releasenotes.connector.github.graphql.GetTagsQuery.AsCommit1;
 import net.openhft.chronicle.releasenotes.connector.github.graphql.GetTagsQuery.AsTag;
 import net.openhft.chronicle.releasenotes.connector.github.graphql.GetTagsQuery.Data;
 import net.openhft.chronicle.releasenotes.connector.github.graphql.GetTagsQuery.Node;
@@ -84,31 +85,46 @@ public class GitHubGraphQLClient {
 
             final Target nodeTarget = node.getTarget().get();
 
-            if (!(nodeTarget instanceof AsTag)) {
+            if (!(nodeTarget instanceof AsCommit) && !(nodeTarget instanceof AsTag)) {
                 continue;
             }
 
-            final AsTag tagTarget = (AsTag) nodeTarget;
+            String tagName = null;
+            String commitSHA1 = null;
 
-            if (!(tagTarget.getOid() instanceof String)) {
-                continue;
+            if (nodeTarget instanceof AsCommit) {
+                final AsCommit commitTarget = (AsCommit) nodeTarget;
+
+                if (!(commitTarget.getOid() instanceof String)) {
+                    continue;
+                }
+
+                tagName = node.getName();
+                commitSHA1 = (String) commitTarget.getOid();
             }
 
-            if (!(tagTarget.getTarget() instanceof AsCommit)) {
-                continue;
+            if (nodeTarget instanceof AsTag) {
+                final AsTag tagTarget = (AsTag) nodeTarget;
+
+                if (!(tagTarget.getTarget() instanceof AsCommit1)) {
+                    continue;
+                }
+
+                final AsCommit1 commitTarget = (AsCommit1) tagTarget.getTarget();
+
+                if (!(commitTarget.getOid() instanceof String)) {
+                    continue;
+                }
+
+                tagName = node.getName();
+                commitSHA1 = (String) commitTarget.getOid();
+
+                final Tag tag = new Tag(tagName, commitSHA1);
+
+                tags.add(tag);
             }
 
-            final AsCommit commitTarget = (AsCommit) tagTarget.getTarget();
-
-            if (!(commitTarget.getOid() instanceof String)) {
-                continue;
-            }
-
-            final String tagName = node.getName();
-            final String tagSHA1 = (String) tagTarget.getOid();
-            final String commitSHA1 = (String) commitTarget.getOid();
-
-            final Tag tag = new Tag(tagName, tagSHA1, commitSHA1);
+            final Tag tag = new Tag(tagName, commitSHA1);
 
             tags.add(tag);
         }

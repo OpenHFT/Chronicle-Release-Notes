@@ -5,7 +5,9 @@ query GetTags($owner: String!, $repository: String!, $amount: Int = 100) {
                 node {
                     name
                     target {
-                        oid
+                        ... on Commit {
+                            oid
+                        }
                         ... on Tag {
                             target {
                                 ... on Commit {
