@@ -13,13 +13,17 @@ import java.util.List;
 public final class MarkdownReleaseNoteCreator implements ReleaseNoteCreator {
 
     private static final String DEFAULT_LABEL = "closed";
-    private static final String MISSING_CHANGELOG = "No changelog";
+    private static final String MISSING_CHANGELOG = "No changelog for this release.";
     private static final String NEW_LINE = System.lineSeparator();
 
     @Override
     public ReleaseNote createReleaseNote(String tag, List<Issue> issues) {
         requireNonNull(tag);
         requireNonNull(issues);
+
+        if (issues.size() == 0) {
+            return new ReleaseNote(tag, tag, italic(MISSING_CHANGELOG));
+        }
 
         issues = issues.stream().sorted((o1, o2) -> {
             final String l1 = o1.getLabels().stream().map(Label::getName).findFirst().orElse(DEFAULT_LABEL);
@@ -75,5 +79,9 @@ public final class MarkdownReleaseNoteCreator implements ReleaseNoteCreator {
 
     private String bold(String text) {
         return "**" + text + "**";
+    }
+
+    private String italic(String text) {
+        return "*" + text + "*";
     }
 }
