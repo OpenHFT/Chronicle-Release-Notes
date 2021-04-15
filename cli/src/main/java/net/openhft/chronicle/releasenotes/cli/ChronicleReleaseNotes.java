@@ -55,6 +55,8 @@ public final class ChronicleReleaseNotes {
         });
 
         commandLine.execute(args);
+
+        System.exit(0);
     }
 
     @Command(
