@@ -26,27 +26,35 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
-public class GitHubGraphQLClient {
+public class GitHubGraphQLClient implements AutoCloseable {
 
     private static final String GITHUB_GRAPHQL_URL = "https://api.github.com/graphql";
 
+    private final OkHttpClient okHttpClient;
     private final ApolloClient apolloClient;
+
+    private boolean closed = false;
 
     public GitHubGraphQLClient(String token) {
         requireNonNull(token);
 
+        this.okHttpClient = new OkHttpClient.Builder()
+            .addInterceptor(chain -> chain.proceed(
+                chain.request().newBuilder().addHeader("Authorization", "Bearer " + token).build()
+            ))
+            .build();
+
         this.apolloClient = ApolloClient.builder()
             .serverUrl(GITHUB_GRAPHQL_URL)
-            .okHttpClient(new OkHttpClient.Builder()
-                .addInterceptor(chain -> chain.proceed(
-                    chain.request().newBuilder().addHeader("Authorization", "Bearer " + token).build()
-                ))
-                .build()
-            )
-        .build();
+            .okHttpClient(okHttpClient)
+            .build();
     }
 
     public List<Tag> getTags(String owner, String repository) {
+        if (closed) {
+            throw new RuntimeException("Cannot execute request from closed client");
+        }
+
         final Optional<Data> optionalData =  callSync(apolloClient.query(new GetTagsQuery(owner, repository, Input.absent()))).getData();
 
         if (!optionalData.isPresent()) {
@@ -154,5 +162,16 @@ public class GitHubGraphQLClient {
         });
 
         return completableFuture.join();
+    }
+
+    @Override
+    public void close() throws Exception {
+        if (closed) {
+            return;
+        }
+
+        okHttpClient.dispatcher().executorService().shutdown();
+        okHttpClient.connectionPool().evictAll();
+        closed = true;
     }
 }

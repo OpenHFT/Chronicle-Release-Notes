@@ -9,7 +9,7 @@ import java.util.List;
 /**
  * @author Mislav Milicevic
  */
-public interface MigrateConnector extends Connector {
+public interface MigrateConnector extends Connector, AutoCloseable {
 
     /**
      * Migrates all issues from a list of a source milestones into a
@@ -20,6 +20,11 @@ public interface MigrateConnector extends Connector {
      * @param toMilestone destination milestones
      */
     MigrateResult migrateMilestones(String repository, List<String> fromMilestones, String toMilestone, MigrateOptions migrateOptions);
+
+    @Override
+    default void close() throws Exception {
+
+    }
 
     @Deprecated
     default MigrateResult migrateMilestones(String repository, List<String> fromMilestones, String toMilestone, List<String> ignoredLabels) {

@@ -92,18 +92,20 @@ public final class ReleaseCommand implements Runnable {
             .getReleaseConnectorProvider(ConnectorProviderKeys.GITHUB)
             .orElseThrow(() -> new RuntimeException("Failed to find GitHub release provider"));
 
-        final ReleaseConnector releaseConnector = releaseConnectorProvider.connect(token)
-            .orElseThrow(() -> new RuntimeException("Failed to connect to GitHub"));
-
-        switch (source) {
-            case BRANCH:
-                handleBranchSource(repository, releaseConnector);
-                break;
-            case MILESTONE:
-                handleMilestoneSource(repository, releaseConnector);
-                break;
-            default:
-                throw new RuntimeException("Invalid source: " + source);
+        try (final ReleaseConnector releaseConnector = releaseConnectorProvider.connect(token)
+                .orElseThrow(() -> new RuntimeException("Failed to connect to GitHub"))) {
+            switch (source) {
+                case BRANCH:
+                    handleBranchSource(repository, releaseConnector);
+                    break;
+                case MILESTONE:
+                    handleMilestoneSource(repository, releaseConnector);
+                    break;
+                default:
+                    throw new RuntimeException("Invalid source: " + source);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 

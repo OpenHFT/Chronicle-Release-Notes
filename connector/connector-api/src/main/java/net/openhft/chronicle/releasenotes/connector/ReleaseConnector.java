@@ -13,7 +13,7 @@ import java.util.Map;
 /**
  * @author Mislav Milicevic
  */
-public interface ReleaseConnector extends Connector {
+public interface ReleaseConnector extends Connector, AutoCloseable {
 
     /**
      * Creates a release for a provided {@code tag} and returns a
@@ -163,6 +163,11 @@ public interface ReleaseConnector extends Connector {
      */
     default ReleaseResult createAggregatedRelease(String repository, String tag, List<ReleaseNote> releaseNotes) {
         return createAggregatedRelease(repository, tag, releaseNotes, AggregateReleaseOptions.DEFAULT);
+    }
+
+    @Override
+    default void close() throws Exception {
+
     }
 
     @Deprecated

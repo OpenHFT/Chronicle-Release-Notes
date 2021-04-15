@@ -244,6 +244,12 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
         return GitHubConnectorProviderKey.class;
     }
 
+    @Override
+    public void close() throws Exception {
+        ReleaseConnector.super.close();
+        graphQLClient.close();
+    }
+
     private ReleaseResult createRelease(GHRepository repository, String tag, Supplier<List<GHIssue>> issueSupplier, List<String> ignoredLabels, boolean override) {
         requireNonNull(repository);
         requireNonNull(tag);
