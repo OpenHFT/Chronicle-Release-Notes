@@ -11,6 +11,8 @@ import net.openhft.chronicle.releasenotes.connector.ConnectorProviderKeys;
 import net.openhft.chronicle.releasenotes.connector.ReleaseConnector;
 import net.openhft.chronicle.releasenotes.connector.ReleaseConnector.AggregateReleaseOptions;
 import net.openhft.chronicle.releasenotes.connector.ReleaseConnector.ReleaseResult;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
@@ -24,6 +26,8 @@ import java.util.stream.Collectors;
     description = "Generates aggregated release notes from a set of releases"
 )
 public final class AggregateCommand implements Runnable {
+
+    private static final Logger LOGGER = LogManager.getLogger();
 
     @Option(
         names = {"-t", "--tag"},
@@ -61,25 +65,30 @@ public final class AggregateCommand implements Runnable {
         final String repository = Git.getCurrentRepository();
 
         final ConnectorProvider<ReleaseConnector> releaseConnectorProvider = ConnectorProviderFactory
-                .getInstance()
-                .getReleaseConnectorProvider(ConnectorProviderKeys.GITHUB)
-                .orElseThrow(() -> new RuntimeException("Failed to find GitHub release provider"));
+            .getInstance()
+            .getReleaseConnectorProvider(ConnectorProviderKeys.GITHUB)
+            .orElseThrow(() -> new RuntimeException("Failed to find GitHub release provider"));
 
-        final ReleaseConnector releaseConnector = releaseConnectorProvider.connect(token)
-                .orElseThrow(() -> new RuntimeException("Failed to connect to GitHub"));
+        try (final ReleaseConnector releaseConnector = releaseConnectorProvider.configure()
+                .withLogger(LOGGER)
+                .connect(token)
+                .orElseThrow(() -> new RuntimeException("Failed to connect to GitHub"))) {
 
-        final Map<String, List<String>> releaseRef = releases.stream()
-            .distinct()
-            .collect(groupingBy(ReleaseReference::getRepository, mapping(ReleaseReference::getRelease, Collectors.toList())));
+            final Map<String, List<String>> releaseRef = releases.stream()
+                .distinct()
+                .collect(groupingBy(ReleaseReference::getRepository, mapping(ReleaseReference::getRelease, Collectors.toList())));
 
-        final AggregateReleaseOptions releaseOptions = new AggregateReleaseOptions.Builder()
-            .overrideRelease(override)
-            .build();
+            final AggregateReleaseOptions releaseOptions = new AggregateReleaseOptions.Builder()
+                .overrideRelease(override)
+                .build();
 
-        final ReleaseResult releaseResult = releaseConnector.createAggregatedRelease(repository, tag, releaseRef, releaseOptions);
+            final ReleaseResult releaseResult = releaseConnector.createAggregatedRelease(repository, tag, releaseRef, releaseOptions);
 
-        releaseResult.throwIfFail();
+            releaseResult.throwIfFail();
 
-        System.out.println("Created release for tag '" + tag + "': " + releaseResult.getReleaseUrl());
+            System.out.println("Created release for tag '" + tag + "': " + releaseResult.getReleaseUrl());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

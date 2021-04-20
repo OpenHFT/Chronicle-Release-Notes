@@ -3,12 +3,17 @@ package net.openhft.chronicle.releasenotes.cli;
 import net.openhft.chronicle.releasenotes.cli.command.AggregateCommand;
 import net.openhft.chronicle.releasenotes.cli.command.MigrateCommand;
 import net.openhft.chronicle.releasenotes.cli.command.ReleaseCommand;
+import net.openhft.chronicle.releasenotes.cli.convertable.LevelConverter;
 import net.openhft.chronicle.releasenotes.cli.convertable.ReleaseReference;
 import net.openhft.chronicle.releasenotes.cli.convertable.ReleaseReferenceConverter;
+import net.openhft.chronicle.releasenotes.cli.mixin.CommandPresetMixin;
+import net.openhft.chronicle.releasenotes.cli.mixin.LoggingMixin;
 import net.openhft.chronicle.releasenotes.cli.util.Git;
+import org.apache.logging.log4j.Level;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.IVersionProvider;
+import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.ScopeType;
 
@@ -25,6 +30,13 @@ import picocli.CommandLine.ScopeType;
 )
 public final class ChronicleReleaseNotes {
 
+    @Mixin
+    private LoggingMixin loggingMixin;
+
+    public LoggingMixin getLoggingMixin() {
+        return loggingMixin;
+    }
+
     @Option(
         names = {"-r", "--repository"},
         description = "Specifies a target Git repository",
@@ -39,9 +51,10 @@ public final class ChronicleReleaseNotes {
     public static void main(String[] args) {
         final CommandLine commandLine = new CommandLine(new ChronicleReleaseNotes());
 
-        commandLine.addMixin("commandPreset", new CommandPreset());
-        commandLine.getSubcommands().values().forEach(subcommand -> subcommand.addMixin("commandPreset", new CommandPreset()));
+        registerMixins(commandLine);
+        commandLine.setExecutionStrategy(LoggingMixin::executionStrategy);
         commandLine.registerConverter(ReleaseReference.class, new ReleaseReferenceConverter());
+        commandLine.registerConverter(Level.class, new LevelConverter());
         commandLine.setCaseInsensitiveEnumValuesAllowed(true);
         commandLine.setUsageHelpAutoWidth(true);
 
@@ -58,14 +71,12 @@ public final class ChronicleReleaseNotes {
         System.exit(0);
     }
 
-    @Command(
-        descriptionHeading   = "%nDescription: ",
-        parameterListHeading = "%nParameters:%n%n",
-        optionListHeading    = "%nOptions:%n",
-        commandListHeading   = "%nCommands:%n",
-        sortOptions = false
-    )
-    private static final class CommandPreset {}
+    private static void registerMixins(CommandLine commandLine) {
+        commandLine.addMixin("commandPreset", new CommandPresetMixin());
+        commandLine.getSubcommands().values().forEach(subcommand -> subcommand.addMixin("commandPreset", new CommandPresetMixin()));
+
+        commandLine.getSubcommands().values().forEach(subcommand -> subcommand.addMixin("logging", new LoggingMixin()));
+    }
 
     protected static final class VersionProvider implements IVersionProvider {
 

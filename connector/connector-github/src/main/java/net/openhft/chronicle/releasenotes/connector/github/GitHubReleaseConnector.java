@@ -13,6 +13,8 @@ import net.openhft.chronicle.releasenotes.creator.ReleaseNoteCreator;
 import net.openhft.chronicle.releasenotes.model.Issue;
 import net.openhft.chronicle.releasenotes.model.Label;
 import net.openhft.chronicle.releasenotes.model.ReleaseNote;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.kohsuke.github.GHBranch;
 import org.kohsuke.github.GHCommit;
 import org.kohsuke.github.GHCommitQueryBuilder;
@@ -65,8 +67,15 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
     private final GitHubGraphQLClient graphQLClient;
     private final ReleaseNoteCreator releaseNoteCreator;
 
+    private final Logger logger;
+
     public GitHubReleaseConnector(String token) throws IOException {
+        this(token, LogManager.getLogger(GitHubReleaseConnector.class));
+    }
+
+    public GitHubReleaseConnector(String token, Logger logger) throws IOException {
         requireNonNull(token);
+        requireNonNull(logger);
 
         this.github = new GitHubBuilder()
             .withOAuthToken(token)
@@ -79,6 +88,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
             .build();
         this.graphQLClient = new GitHubGraphQLClient(token);
         this.releaseNoteCreator = ReleaseNoteCreator.markdown();
+        this.logger = logger;
     }
 
     @Override

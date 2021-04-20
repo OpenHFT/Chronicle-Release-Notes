@@ -7,6 +7,8 @@ import net.openhft.chronicle.releasenotes.connector.ConnectorProviderKeys;
 import net.openhft.chronicle.releasenotes.connector.MigrateConnector;
 import net.openhft.chronicle.releasenotes.connector.MigrateConnector.MigrateOptions;
 import net.openhft.chronicle.releasenotes.connector.MigrateConnector.MigrateResult;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
@@ -17,6 +19,8 @@ import java.util.List;
     description = "Migrates issues from one or more milestones to a target milestone"
 )
 public final class MigrateCommand implements Runnable {
+
+    private static final Logger LOGGER = LogManager.getLogger();
 
     @Option(
         names = {"-f", "--from"},
@@ -59,15 +63,22 @@ public final class MigrateCommand implements Runnable {
             .getMigrateConnectorProvider(ConnectorProviderKeys.GITHUB)
             .orElseThrow(() -> new RuntimeException("Failed to find GitHub migration provider"));
 
-        final MigrateConnector migrateConnector = migrateConnectorProvider.connect(token)
-            .orElseThrow(() -> new RuntimeException("Failed to connect to GitHub"));
+        try (final MigrateConnector migrateConnector = migrateConnectorProvider
+                .configure()
+                .withLogger(LOGGER)
+                .connect(token)
+                .orElseThrow(() -> new RuntimeException("Failed to connect to GitHub"))) {
 
-        final MigrateOptions migrateOptions = new MigrateOptions.Builder()
-            .ignoreLabels(ignoreLabels)
-            .build();
+            final MigrateOptions migrateOptions = new MigrateOptions.Builder()
+                .ignoreLabels(ignoreLabels)
+                .build();
 
-        final MigrateResult migrateResult = migrateConnector.migrateMilestones(repository, from, to, migrateOptions);
+            final MigrateResult migrateResult = migrateConnector
+                .migrateMilestones(repository, from, to, migrateOptions);
 
-        migrateResult.throwIfFail();
+            migrateResult.throwIfFail();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

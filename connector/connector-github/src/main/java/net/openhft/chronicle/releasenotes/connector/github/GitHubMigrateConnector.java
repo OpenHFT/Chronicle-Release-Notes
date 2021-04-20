@@ -5,6 +5,8 @@ import static java.util.stream.Collectors.toList;
 
 import net.openhft.chronicle.releasenotes.connector.ConnectorProviderKey;
 import net.openhft.chronicle.releasenotes.connector.MigrateConnector;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.kohsuke.github.GHIssue;
 import org.kohsuke.github.GHIssueState;
 import org.kohsuke.github.GHMilestone;
@@ -28,10 +30,18 @@ public final class GitHubMigrateConnector implements MigrateConnector {
 
     private final GitHub github;
 
+    private final Logger logger;
+
     public GitHubMigrateConnector(String token) throws IOException {
+        this(token, LogManager.getLogger(GitHubMigrateConnector.class));
+    }
+
+    public GitHubMigrateConnector(String token, Logger logger) throws IOException {
         this.github = new GitHubBuilder()
             .withOAuthToken(requireNonNull(token))
             .build();
+
+        this.logger = requireNonNull(logger);
     }
 
     @Override

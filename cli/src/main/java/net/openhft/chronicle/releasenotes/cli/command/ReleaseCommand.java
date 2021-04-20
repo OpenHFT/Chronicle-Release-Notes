@@ -8,6 +8,8 @@ import net.openhft.chronicle.releasenotes.connector.ReleaseConnector;
 import net.openhft.chronicle.releasenotes.connector.ReleaseConnector.BranchReleaseOptions;
 import net.openhft.chronicle.releasenotes.connector.ReleaseConnector.MilestoneReleaseOptions;
 import net.openhft.chronicle.releasenotes.connector.ReleaseConnector.ReleaseResult;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
@@ -18,6 +20,8 @@ import java.util.List;
     description = "Generates release notes for a specific tag"
 )
 public final class ReleaseCommand implements Runnable {
+
+    private static final Logger LOGGER = LogManager.getLogger();
 
     @Option(
         names = {"-t", "--tag"},
@@ -92,8 +96,11 @@ public final class ReleaseCommand implements Runnable {
             .getReleaseConnectorProvider(ConnectorProviderKeys.GITHUB)
             .orElseThrow(() -> new RuntimeException("Failed to find GitHub release provider"));
 
-        try (final ReleaseConnector releaseConnector = releaseConnectorProvider.connect(token)
+        try (final ReleaseConnector releaseConnector = releaseConnectorProvider.configure()
+                .withLogger(LOGGER)
+                .connect(token)
                 .orElseThrow(() -> new RuntimeException("Failed to connect to GitHub"))) {
+
             switch (source) {
                 case BRANCH:
                     handleBranchSource(repository, releaseConnector);

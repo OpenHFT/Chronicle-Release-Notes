@@ -12,11 +12,22 @@ import java.util.Optional;
 public class GitHubReleaseConnectorProvider implements ConnectorProvider<ReleaseConnector> {
 
     @Override
-    public Optional<ReleaseConnector> connect(String token) {
-        try {
-            return Optional.of(new GitHubReleaseConnector(token));
-        } catch (IOException e) {
-            return Optional.empty();
+    public ConnectionConfiguration<ReleaseConnector> configure() {
+        return new ReleaseConnectionConfiguration();
+    }
+
+    private static final class ReleaseConnectionConfiguration extends ConnectionConfiguration<ReleaseConnector> {
+
+        @Override
+        public Optional<ReleaseConnector> connect(String token) {
+            try {
+                return Optional.of(logger != null
+                    ? new GitHubReleaseConnector(token, logger)
+                    : new GitHubReleaseConnector(token)
+                );
+            } catch (IOException e) {
+                return Optional.empty();
+            }
         }
     }
 }
