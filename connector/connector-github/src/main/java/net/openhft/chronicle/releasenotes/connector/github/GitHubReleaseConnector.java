@@ -6,7 +6,6 @@ import static java.util.stream.Collectors.toMap;
 
 import net.openhft.chronicle.releasenotes.connector.ConnectorProviderKey;
 import net.openhft.chronicle.releasenotes.connector.ReleaseConnector;
-import net.openhft.chronicle.releasenotes.connector.exception.TagNotFoundException;
 import net.openhft.chronicle.releasenotes.connector.github.graphql.GitHubGraphQLClient;
 import net.openhft.chronicle.releasenotes.connector.github.graphql.model.Tag;
 import net.openhft.chronicle.releasenotes.creator.ReleaseNoteCreator;
@@ -152,7 +151,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
 
         try {
             if (!checkTagExists(repositoryRef, tag)) {
-                return ReleaseResult.fail(new TagNotFoundException(tag));
+                return ReleaseResult.fail(new RuntimeException("Tag '" + tag + "' not found"));
             }
 
             final GHRelease remoteRelease = repositoryRef.getReleaseByTagName(tag);
@@ -216,7 +215,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
 
         try {
             if (!checkTagExists(repositoryRef, tag)) {
-                return ReleaseResult.fail(new TagNotFoundException(tag));
+                return ReleaseResult.fail(new RuntimeException("Tag '" + tag + "' not found"));
             }
 
             final GHRelease remoteRelease = repositoryRef.getReleaseByTagName(tag);
@@ -267,7 +266,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
 
         try {
             if (!checkTagExists(repository, tag)) {
-                return ReleaseResult.fail(new TagNotFoundException(tag));
+                return ReleaseResult.fail(new RuntimeException("Tag '" + tag + "' not found"));
             }
 
             final GHRelease remoteRelease = repository.getReleaseByTagName(tag);
