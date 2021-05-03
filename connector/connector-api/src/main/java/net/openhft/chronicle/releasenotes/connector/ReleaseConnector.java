@@ -236,12 +236,12 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
     /**
      * @author Mislav Milicevic
      */
-    class ReleaseResult {
+    final class ReleaseResult {
         private final ReleaseNote releaseNote;
         private final URL releaseUrl;
-        private final RuntimeException error;
+        private final ReleaseException error;
 
-        private ReleaseResult(ReleaseNote releaseNote, URL releaseUrl, RuntimeException error) {
+        private ReleaseResult(ReleaseNote releaseNote, URL releaseUrl, ReleaseException error) {
             this.releaseNote = releaseNote;
             this.releaseUrl = releaseUrl;
             this.error = error;
@@ -255,7 +255,7 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
             return releaseUrl;
         }
 
-        public RuntimeException getError() {
+        public ReleaseException getError() {
             return error;
         }
 
@@ -279,15 +279,28 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
             return new ReleaseResult(releaseNote, url, null);
         }
 
-        public static ReleaseResult fail(RuntimeException error) {
+        public static ReleaseResult fail(ReleaseException error) {
             return new ReleaseResult(null, null, error);
+        }
+
+        public static ReleaseResult fail(Throwable error) {
+            return fail(new ReleaseException(error.getMessage()));
+        }
+
+        @Override
+        public String toString() {
+            return "ReleaseResult{" +
+                    "releaseNote=" + releaseNote +
+                    ", releaseUrl=" + releaseUrl +
+                    ", error=" + error +
+                    '}';
         }
     }
 
     /**
      * @author Mislav Milicevic
      */
-    class BranchReleaseOptions {
+    final class BranchReleaseOptions {
         public static final BranchReleaseOptions DEFAULT = new BranchReleaseOptions(
             new ArrayList<>(),
             false,
@@ -314,6 +327,15 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
 
         public boolean includeIssuesWithoutClosingKeyword() {
             return includeIssuesWithoutClosingKeyword;
+        }
+
+        @Override
+        public String toString() {
+            return "BranchReleaseOptions{" +
+                    "ignoredLabels=" + ignoredLabels +
+                    ", overrideRelease=" + overrideRelease +
+                    ", includeIssuesWithoutClosingKeyword=" + includeIssuesWithoutClosingKeyword +
+                    '}';
         }
 
         public static final class Builder {
@@ -381,6 +403,14 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
 
         public boolean overrideRelease() {
             return overrideRelease;
+        }
+
+        @Override
+        public String toString() {
+            return "MilestoneReleaseOptions{" +
+                    "ignoredLabels=" + ignoredLabels +
+                    ", overrideRelease=" + overrideRelease +
+                    '}';
         }
 
         public static final class Builder {

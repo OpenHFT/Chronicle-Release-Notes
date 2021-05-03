@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
+import java.util.StringJoiner;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -96,15 +97,24 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
         requireNonNull(tag);
         requireNonNull(branch);
 
-        final GHRepository repositoryRef = getRepository(repository);
+        logger.info("Creating release in repository '{}' for tag '{}' on branch '{}'", repository, tag, branch);
+        logger.debug("{}", releaseOptions);
 
-        return createRelease(
-            repositoryRef,
-            tag,
-            () -> getIssuesForBranch(repositoryRef, branch, tag, releaseOptions.includeIssuesWithoutClosingKeyword()),
-            releaseOptions.getIgnoredLabels(),
-            releaseOptions.overrideRelease()
-        );
+        final GHRepository repositoryRef;
+
+        try {
+            repositoryRef = getRepository(repository);
+
+            return createRelease(
+                repositoryRef,
+                tag,
+                () -> getIssuesForBranch(repositoryRef, branch, tag, releaseOptions.includeIssuesWithoutClosingKeyword()),
+                releaseOptions.getIgnoredLabels(),
+                releaseOptions.overrideRelease()
+            );
+        } catch (RuntimeException e) {
+            return ReleaseResult.fail(e);
+        }
     }
 
     @Override
@@ -114,15 +124,24 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
         requireNonNull(endTag);
         requireNonNull(branch);
 
-        final GHRepository repositoryRef = getRepository(repository);
+        logger.info("Creating release in repository '{}' for tag '{}' until tag '{}' on branch '{}'", repository, tag, endTag, branch);
+        logger.debug("{}", releaseOptions);
 
-        return createRelease(
-            repositoryRef,
-            tag,
-            () -> getIssuesForBranch(repositoryRef, branch, tag, endTag, releaseOptions.includeIssuesWithoutClosingKeyword()),
-            releaseOptions.getIgnoredLabels(),
-            releaseOptions.overrideRelease()
-        );
+        final GHRepository repositoryRef;
+
+        try {
+            repositoryRef = getRepository(repository);
+
+            return createRelease(
+                repositoryRef,
+                tag,
+                () -> getIssuesForBranch(repositoryRef, branch, tag, endTag, releaseOptions.includeIssuesWithoutClosingKeyword()),
+                releaseOptions.getIgnoredLabels(),
+                releaseOptions.overrideRelease()
+            );
+        } catch (RuntimeException e) {
+            return ReleaseResult.fail(e);
+        }
     }
 
     @Override
@@ -131,14 +150,23 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
         requireNonNull(tag);
         requireNonNull(milestone);
 
-        final GHRepository repositoryRef = getRepository(repository);
+        logger.info("Creating release in repository '{}' for tag '{}' from milestone '{}'", repository, tag, milestone);
+        logger.debug("{}", releaseOptions);
 
-        return createRelease(
-            repositoryRef,
-            tag, () -> getClosedMilestoneIssues(repositoryRef, milestone),
-            releaseOptions.getIgnoredLabels(),
-            releaseOptions.overrideRelease()
-        );
+        final GHRepository repositoryRef;
+
+        try {
+            repositoryRef = getRepository(repository);
+
+            return createRelease(
+                repositoryRef,
+                tag, () -> getClosedMilestoneIssues(repositoryRef, milestone),
+                releaseOptions.getIgnoredLabels(),
+                releaseOptions.overrideRelease()
+            );
+        } catch (RuntimeException e) {
+            return ReleaseResult.fail(e);
+        }
     }
 
     @Override
@@ -147,7 +175,31 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
         requireNonNull(tag);
         requireNonNull(releases);
 
-        final GHRepository repositoryRef = getRepository(repository);
+        if (logger.isInfoEnabled()) {
+            logger.info("Creating aggregated release in repository '{}' for tag '{}'", repository, tag);
+
+            final StringBuilder formattedReleases = new StringBuilder();
+
+            releases.forEach((k, v) -> {
+                formattedReleases.append(k).append(":\n");
+
+                v.forEach(release -> {
+                    formattedReleases.append("\t- ").append(release).append('\n');
+                });
+
+                formattedReleases.append('\n');
+            });
+
+            logger.info("Releases: \n{}", formattedReleases);
+        }
+
+        final GHRepository repositoryRef;
+
+        try {
+            repositoryRef = getRepository(repository);
+        } catch (RuntimeException e) {
+            return ReleaseResult.fail(e);
+        }
 
         try {
             if (!checkTagExists(repositoryRef, tag)) {
@@ -156,12 +208,55 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
 
             final GHRelease remoteRelease = repositoryRef.getReleaseByTagName(tag);
 
+            final StringJoiner missingRepositoriesJoiner = new StringJoiner(", ");
+            final StringJoiner missingReleasesJoiner = new StringJoiner(", ");
+
             final Map<String, Map<String, GHRelease>> sourceReleases = releases.entrySet().stream()
                 .collect(toMap(Entry::getKey, entry -> {
-                    final GHRepository sourceRepository = getRepository(entry.getKey());
+                    final GHRepository sourceRepository;
+
+                    try {
+                        sourceRepository = getRepository(entry.getKey());
+                    } catch (RuntimeException e) {
+                        missingRepositoriesJoiner.add(entry.getKey());
+                        return new HashMap<>();
+                    }
+
                     return entry.getValue().stream()
-                        .collect(HashMap::new, (m, v) -> m.put(v, getRelease(sourceRepository, v)), HashMap::putAll);
+                        .collect(HashMap::new, (m, v) -> {
+                            final GHRelease release;
+
+                            try {
+                                release = getRelease(sourceRepository, v);
+                            } catch (RuntimeException e) {
+                                missingReleasesJoiner.add(sourceRepository.getName() + ":" + v);
+                                return;
+                            }
+
+                            m.put(v, release);
+                        }, HashMap::putAll);
                 }));
+
+            final String missingRepositories = missingRepositoriesJoiner.toString();
+            final String missingReleases = missingReleasesJoiner.toString();
+
+            if (!missingRepositories.isEmpty() || !missingReleases.isEmpty()) {
+                final StringBuilder exceptionMessage = new StringBuilder();
+
+                if (!missingRepositories.isEmpty()) {
+                    exceptionMessage.append("Repositories [").append(missingRepositories).append("] not found");
+                }
+
+                if (!missingReleases.isEmpty()) {
+                    if (exceptionMessage.length() != 0) {
+                        exceptionMessage.append('\n');
+                    }
+
+                    exceptionMessage.append("Releases [").append(missingReleases).append("] not found");
+                }
+
+                return ReleaseResult.fail(new RuntimeException(exceptionMessage.toString()));
+            }
 
             final List<ReleaseNote> normalizedReleaseNotes = sourceReleases.values().stream()
                 .map(stringGHReleaseMap -> stringGHReleaseMap.entrySet().stream().map(
@@ -179,7 +274,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
 
             if (remoteRelease != null) {
                 if (!releaseOptions.overrideRelease()) {
-                    throw new RuntimeException("Release for tag '" + tag + "' already exists");
+                    return ReleaseResult.fail(new RuntimeException("Release for tag '" + tag + "' already exists"));
                 }
 
                 final ReleaseNote releaseNote = releaseNoteCreator.createAggregatedReleaseNote(tag, normalizedReleaseNotes);
@@ -222,7 +317,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
 
             if (remoteRelease != null) {
                 if (!releaseOptions.overrideRelease()) {
-                    throw new RuntimeException("Release for tag '" + tag + "' already exists");
+                    return ReleaseResult.fail(new RuntimeException("Release for tag '" + tag + "' already exists"));
                 }
 
                 final ReleaseNote releaseNote = releaseNoteCreator.createAggregatedReleaseNote(tag, releaseNotes);
@@ -273,7 +368,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
 
             if (remoteRelease != null) {
                 if (!override) {
-                    throw new RuntimeException("Release for tag '" + tag + "' already exists");
+                    return ReleaseResult.fail(new RuntimeException("Release for tag '" + tag + "' already exists"));
                 }
 
                 final List<Issue> issues = filterIssueLabels(issueSupplier.get(), ignoredLabels)
@@ -312,6 +407,8 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
     private GHRepository getRepository(String repository) {
         requireNonNull(repository);
 
+        logger.debug("Fetching repository '{}'", repository);
+
         try {
             return github.getRepository(repository);
         } catch (IOException e) {
@@ -322,6 +419,8 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
     private GHBranch getBranch(GHRepository repository, String branch) {
         requireNonNull(repository);
         requireNonNull(branch);
+
+        logger.debug("Fetching branch '{}' in repository '{}'", branch, repository.getFullName());
 
         try {
             return repository.getBranch(branch);
@@ -334,6 +433,8 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
         requireNonNull(repository);
         requireNonNull(tag);
 
+        logger.debug("Fetching release for tag '{}' in repository '{}'", tag, repository.getFullName());
+
         try {
             return repository.getReleaseByTagName(tag);
         } catch (IOException e) {
@@ -344,6 +445,8 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
     private Map<String, GHTag> getTags(GHRepository repository, String... tags) {
         requireNonNull(repository);
         requireNonNull(tags);
+
+        logger.debug("Fetching tags [{}] in repository '{}'", String.join(", ", tags), repository.getFullName());
 
         final List<String> tagSet = Arrays.asList(tags);
 
@@ -375,6 +478,8 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
         requireNonNull(branch);
         requireNonNull(tag);
 
+        logger.debug("Fetching tag before tag '{}' in repository '{}' on branch '{}'", tag.getName(), repository.getFullName(), branch.getName());
+
         final List<String> commits = getCommitsForBranchFromTag(repository, branch, tag)
             .stream()
             .map(GHCommit::getSHA1)
@@ -398,6 +503,8 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
         requireNonNull(repository);
         requireNonNull(tag);
 
+        logger.debug("Checking if tag '{}' exists in repository '{}'", tag, repository.getFullName());
+
         try {
             return stream(repository.listTags().withPageSize(REQUEST_PAGE_SIZE))
                     .anyMatch(ghTag -> ghTag.getName().equals(tag));
@@ -406,20 +513,12 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
         }
     }
 
-    private boolean isTagOnBranch(GHRepository repository, GHTag tag, GHBranch branch) {
-        requireNonNull(repository);
-        requireNonNull(tag);
-        requireNonNull(branch);
-
-        final List<GHCommit> commits = getCommitsForBranchFromTag(repository, branch, tag);
-
-        return commits.stream().anyMatch(commit -> commit.getSHA1().equals(tag.getCommit().getSHA1()));
-    }
-
     private List<GHCommit> getCommitsForBranchFromTag(GHRepository repository, GHBranch branch, GHTag tag) {
         requireNonNull(repository);
         requireNonNull(branch);
         requireNonNull(tag);
+
+        logger.debug("Fetching commits for branch '{}' from tag '{}' in repository '{}'", branch.getName(), tag.getName(), repository.getFullName());
 
         try {
             final PagedIterable<GHCommit> commits =  repository.queryCommits()
@@ -447,6 +546,8 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
         requireNonNull(branch);
         requireNonNull(startTag);
 
+        logger.debug("Fetching issues on branch '{}' between tags '{}' and '{}' in repository '{}'", branch, startTag, endTag, repository.getFullName());
+
         final List<GHCommit> commits = getCommitsForBranch(repository, branch, startTag, endTag);
         final List<Integer> issueIds = extractIssueIdsFromCommits(commits, includeIssuesWithoutClosingKeyword);
 
@@ -457,6 +558,8 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
         requireNonNull(repository);
         requireNonNull(branch);
         requireNonNull(startTag);
+
+        logger.debug("Fetching commits for branch '{}' between tags '{}' and '{}' in repository '{}'", branch, startTag, endTag, repository.getFullName());
 
         final GHBranch branchRef = getBranch(repository, branch);
         final Map<String, GHTag> tags = endTag == null ? getTags(repository, startTag) : getTags(repository, startTag, endTag);
@@ -505,14 +608,18 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
     }
 
     private List<Integer> extractIssueIdsFromCommits(List<GHCommit> commits, boolean includeIssuesWithoutClosingKeyword) {
+        logger.debug("Extracting issue ids from {} commits", commits.size());
         return commits.stream()
             .map(commit -> extractIssueIdsFromCommit(commit, includeIssuesWithoutClosingKeyword))
             .flatMap(Collection::stream)
+            .distinct()
             .collect(toList());
     }
 
     private List<Integer> extractIssueIdsFromCommit(GHCommit commit, boolean includeIssuesWithoutClosingKeyword) {
         requireNonNull(commit);
+
+        logger.debug("Extracting issue ids from commit '{}' in repository '{}'", commit.getSHA1(), commit.getOwner().getFullName());
 
         try {
             final String commitMessage = commit.getCommitShortInfo().getMessage()
@@ -607,6 +714,12 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
 
     private List<GHIssue> getIssuesFromIds(GHRepository repository, List<Integer> ids) {
         requireNonNull(repository);
+
+        if (ids.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        logger.debug("Fetching {} issues from repository '{}'", ids.size(), repository.getFullName());
 
         return stream(repository.listIssues(GHIssueState.ALL).withPageSize(REQUEST_PAGE_SIZE))
                 .filter(ghIssue -> ids.contains(ghIssue.getNumber()))

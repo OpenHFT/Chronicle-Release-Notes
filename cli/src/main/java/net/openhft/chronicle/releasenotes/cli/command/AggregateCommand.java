@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 )
 public final class AggregateCommand implements Runnable {
 
-    private static final Logger LOGGER = LogManager.getLogger();
+    private static final Logger LOGGER = LogManager.getLogger(AggregateCommand.class);
 
     @Option(
         names = {"-t", "--tag"},

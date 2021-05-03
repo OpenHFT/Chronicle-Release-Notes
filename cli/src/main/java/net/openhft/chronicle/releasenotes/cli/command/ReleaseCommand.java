@@ -21,7 +21,7 @@ import java.util.List;
 )
 public final class ReleaseCommand implements Runnable {
 
-    private static final Logger LOGGER = LogManager.getLogger();
+    private static final Logger LOGGER = LogManager.getLogger(ReleaseCommand.class);
 
     @Option(
         names = {"-t", "--tag"},

@@ -21,7 +21,7 @@ public final class LoggingMixin {
     @Spec(Target.MIXEE)
     private CommandSpec mixee;
 
-    private Level level = Level.ERROR;
+    private Level level = Level.INFO;
 
     @Option(names = {"-l", "--log-level"})
     public void setLevel(Level level) {

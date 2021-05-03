@@ -20,7 +20,7 @@ import java.util.List;
 )
 public final class MigrateCommand implements Runnable {
 
-    private static final Logger LOGGER = LogManager.getLogger();
+    private static final Logger LOGGER = LogManager.getLogger(MigrateCommand.class);
 
     @Option(
         names = {"-f", "--from"},

@@ -39,13 +39,13 @@ public interface MigrateConnector extends Connector, AutoCloseable {
      * @author Mislav Milicevic
      */
     class MigrateResult {
-        private final RuntimeException error;
+        private final MigrateException error;
 
-        private MigrateResult(RuntimeException error) {
+        private MigrateResult(MigrateException error) {
             this.error = error;
         }
 
-        public RuntimeException getError() {
+        public MigrateException getError() {
             return error;
         }
 
@@ -67,10 +67,14 @@ public interface MigrateConnector extends Connector, AutoCloseable {
             return new MigrateResult(null);
         }
 
-        public static MigrateResult fail(RuntimeException error) {
+        public static MigrateResult fail(MigrateException error) {
             requireNonNull(error);
 
             return new MigrateResult(error);
+        }
+
+        public static MigrateResult fail(Throwable error) {
+            return fail(new MigrateException(error.getMessage()));
         }
     }
 
