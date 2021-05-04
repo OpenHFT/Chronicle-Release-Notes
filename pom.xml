@@ -10,7 +10,7 @@
     </parent>
 
     <artifactId>chronicle-release-notes-parent</artifactId>
-    <version>1.0.3</version>
+    <version>1.0.4-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>Chronicle Release Notes</name>
@@ -247,6 +247,6 @@
         <url>scm:git:git@github.com:OpenHFT/Chronicle-Release-Notes.git</url>
         <connection>scm:git:git@github.com:OpenHFT/Chronicle-Release-Notes.git</connection>
         <developerConnection>scm:git:git@github.com:OpenHFT/Chronicle-Release-Notes.git</developerConnection>
-        <tag>chronicle-release-notes-parent-1.0.3</tag>
+        <tag>develop</tag>
     </scm>
 </project>
