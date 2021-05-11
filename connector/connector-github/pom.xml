@@ -13,7 +13,7 @@
     <name>Chronicle Release Notes - Connector - GitHub</name>
 
     <properties>
-        <maven.javadoc.skip>true</maven.javadoc.skip>
+        <additionalParams>-Xdoclint:none</additionalParams>
     </properties>
 
     <dependencyManagement>
@@ -86,7 +86,7 @@
                             <goal>generate</goal>
                         </goals>
                         <configuration>
-                            <rootPackageName>net.openhft.chronicle.releasenotes.connector.github.graphql</rootPackageName>
+                            <rootPackageName>net.openhft.chronicle.releasenotes.connector.github.internal.graphql</rootPackageName>
                             <sourceDirName>${project.basedir}/graphql</sourceDirName>
                             <introspectionFile>${project.basedir}/graphql/__introspection__.json</introspectionFile>
                             <generateIntrospectionFile>true</generateIntrospectionFile>
@@ -97,6 +97,14 @@
                         </configuration>
                     </execution>
                 </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <configuration>
+                    <excludePackageNames>net.openhft.chronicle.releasenotes.connector.github.internal.*</excludePackageNames>
+                </configuration>
             </plugin>
         </plugins>
     </build>
