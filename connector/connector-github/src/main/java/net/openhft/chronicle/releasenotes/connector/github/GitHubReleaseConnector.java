@@ -183,9 +183,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
             releases.forEach((k, v) -> {
                 formattedReleases.append(k).append(":\n");
 
-                v.forEach(release -> {
-                    formattedReleases.append("\t- ").append(release).append('\n');
-                });
+                v.forEach(release -> formattedReleases.append("\t- ").append(release).append('\n'));
 
                 formattedReleases.append('\n');
             });
@@ -721,9 +719,9 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
 
         logger.debug("Fetching {} issues from repository '{}'", ids.size(), repository.getFullName());
 
-        return stream(repository.listIssues(GHIssueState.ALL).withPageSize(REQUEST_PAGE_SIZE))
-                .filter(ghIssue -> ids.contains(ghIssue.getNumber()))
-                .collect(toList());
+        return stream(repository.listIssues(GHIssueState.CLOSED).withPageSize(REQUEST_PAGE_SIZE))
+            .filter(ghIssue -> ids.contains(ghIssue.getNumber()))
+            .collect(toList());
     }
 
     private List<GHIssue> filterIssueLabels(List<GHIssue> issues, List<String> ignoredLabels) {
@@ -735,7 +733,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
 
         return issues.stream()
             .filter(issue -> issue.getLabels().stream()
-                .noneMatch(ghLabel -> ignoredLabels.contains(ghLabel.getName())))
+            .noneMatch(ghLabel -> ignoredLabels.contains(ghLabel.getName())))
             .collect(toList());
     }
 
