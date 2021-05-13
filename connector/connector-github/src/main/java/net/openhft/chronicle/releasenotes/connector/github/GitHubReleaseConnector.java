@@ -622,6 +622,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
         try {
             final String commitMessage = commit.getCommitShortInfo().getMessage()
                 .replaceAll("\n", " ")
+                .replaceAll("\r", "")
                 .replaceAll(" +", " ")
                 .replaceAll(",", "");
 
