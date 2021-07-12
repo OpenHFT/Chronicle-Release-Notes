@@ -165,6 +165,40 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
         return createAggregatedRelease(repository, tag, releaseNotes, AggregateReleaseOptions.DEFAULT);
     }
 
+    /**
+     * Queries an existing release for a provided {@code tag} and returns a
+     * {@link ReleaseResult}. The provided {@code branch} is used
+     * as a reference to generate the contents of the release
+     * notes associated with this release. The contents of the
+     * release are all issues contained between the provided
+     * {@code tag} and the tag that chronologically came before
+     * it.
+     *
+     * @param repository reference
+     * @param tag name
+     * @param branch reference
+     * @return {@link ReleaseResult}
+     */
+    ReleaseResult queryReleaseFromBranch(String repository, String tag, String branch, BranchReleaseOptions releaseOptions);
+
+    /**
+     * Queries an existing release for a provided {@code tag} and returns a
+     * {@link ReleaseResult}. The provided {@code branch} is used
+     * as a reference to generate the contents of the release
+     * notes associated with this release. The contents of the
+     * release are all issues contained between the provided
+     * {@code tag} and the tag that chronologically came before
+     * it.
+     *
+     * @param repository reference
+     * @param tag name
+     * @param branch reference
+     * @return {@link ReleaseResult}
+     */
+    default ReleaseResult queryReleaseFromBranch(String repository, String tag, String branch) {
+        return createReleaseFromBranch(repository, tag, branch, BranchReleaseOptions.DEFAULT);
+    }
+
     @Override
     default void close() throws Exception {
 

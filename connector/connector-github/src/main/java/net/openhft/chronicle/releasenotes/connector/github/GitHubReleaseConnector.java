@@ -30,6 +30,7 @@ import org.kohsuke.github.RateLimitHandler;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -105,12 +106,12 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
         try {
             repositoryRef = getRepository(repository);
 
-            return createRelease(
+            return getOrCreateRelease(
                 repositoryRef,
                 tag,
                 () -> getIssuesForBranch(repositoryRef, branch, tag, releaseOptions.includeIssuesWithoutClosingKeyword()),
                 releaseOptions.getIgnoredLabels(),
-                releaseOptions.overrideRelease()
+                releaseOptions.overrideRelease() ? ReleaseAction.CREATE_OR_UPDATE : ReleaseAction.CREATE
             );
         } catch (RuntimeException e) {
             return ReleaseResult.fail(e);
@@ -132,12 +133,12 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
         try {
             repositoryRef = getRepository(repository);
 
-            return createRelease(
+            return getOrCreateRelease(
                 repositoryRef,
                 tag,
                 () -> getIssuesForBranch(repositoryRef, branch, tag, endTag, releaseOptions.includeIssuesWithoutClosingKeyword()),
                 releaseOptions.getIgnoredLabels(),
-                releaseOptions.overrideRelease()
+                releaseOptions.overrideRelease() ? ReleaseAction.CREATE_OR_UPDATE : ReleaseAction.CREATE
             );
         } catch (RuntimeException e) {
             return ReleaseResult.fail(e);
@@ -158,11 +159,11 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
         try {
             repositoryRef = getRepository(repository);
 
-            return createRelease(
+            return getOrCreateRelease(
                 repositoryRef,
                 tag, () -> getClosedMilestoneIssues(repositoryRef, milestone),
                 releaseOptions.getIgnoredLabels(),
-                releaseOptions.overrideRelease()
+                releaseOptions.overrideRelease() ? ReleaseAction.CREATE_OR_UPDATE : ReleaseAction.CREATE
             );
         } catch (RuntimeException e) {
             return ReleaseResult.fail(e);
@@ -342,6 +343,32 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
     }
 
     @Override
+    public ReleaseResult queryReleaseFromBranch(String repository, String tag, String branch, BranchReleaseOptions releaseOptions) {
+        requireNonNull(repository);
+        requireNonNull(tag);
+        requireNonNull(branch);
+
+        logger.info("Querying release in repository '{}' for tag '{}' on branch '{}'", repository, tag, branch);
+        logger.debug("{}", releaseOptions);
+
+        final GHRepository repositoryRef;
+
+        try {
+            repositoryRef = getRepository(repository);
+
+            return getOrCreateRelease(
+                    repositoryRef,
+                    tag,
+                    () -> getIssuesForBranch(repositoryRef, branch, tag, releaseOptions.includeIssuesWithoutClosingKeyword()),
+                    releaseOptions.getIgnoredLabels(),
+                    ReleaseAction.QUERY
+            );
+        } catch (RuntimeException e) {
+            return ReleaseResult.fail(e);
+        }
+    }
+
+    @Override
     public Class<? extends ConnectorProviderKey> getKey() {
         return GitHubConnectorProviderKey.class;
     }
@@ -352,7 +379,17 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
         graphQLClient.close();
     }
 
-    private ReleaseResult createRelease(GHRepository repository, String tag, Supplier<List<GHIssue>> issueSupplier, List<String> ignoredLabels, boolean override) {
+    private enum ReleaseAction {
+        CREATE,
+        CREATE_OR_UPDATE,
+        QUERY;
+
+        public String displayName() {
+            return name().toLowerCase().replace('_', ' ');
+        }
+    }
+
+    private ReleaseResult getOrCreateRelease(GHRepository repository, String tag, Supplier<List<GHIssue>> issueSupplier, List<String> ignoredLabels, ReleaseAction action) {
         requireNonNull(repository);
         requireNonNull(tag);
         requireNonNull(issueSupplier);
@@ -365,7 +402,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
             final GHRelease remoteRelease = repository.getReleaseByTagName(tag);
 
             if (remoteRelease != null) {
-                if (!override) {
+                if (action == ReleaseAction.CREATE) {
                     return ReleaseResult.fail(new RuntimeException("Release for tag '" + tag + "' already exists"));
                 }
 
@@ -376,12 +413,21 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
 
                 final ReleaseNote releaseNote = releaseNoteCreator.createReleaseNote(tag, issues);
 
-                final GHRelease release = remoteRelease.update()
-                    .name(releaseNote.getTitle())
-                    .body(releaseNote.getBody())
-                    .update();
+                URL htmlUrl;
+                if (action == ReleaseAction.CREATE_OR_UPDATE) {
+                    final GHRelease release = remoteRelease.update()
+                            .name(releaseNote.getTitle())
+                            .body(releaseNote.getBody())
+                            .update();
 
-                return ReleaseResult.success(releaseNote, release.getHtmlUrl());
+                    htmlUrl = release.getHtmlUrl();
+                } else {
+                    htmlUrl = remoteRelease.getHtmlUrl();
+                }
+
+                return ReleaseResult.success(releaseNote, htmlUrl);
+            } else if (action == ReleaseAction.QUERY) {
+                return ReleaseResult.fail(new RuntimeException("Release for tag '" + tag + "' does not exists"));
             }
 
             final List<Issue> issues = filterIssueLabels(issueSupplier.get(), ignoredLabels)
@@ -398,7 +444,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
 
             return ReleaseResult.success(releaseNote, release.getHtmlUrl());
         } catch (IOException e) {
-            return ReleaseResult.fail(new RuntimeException("Failed to create release for tag '" + tag + "'"));
+            return ReleaseResult.fail(new RuntimeException("Failed to " + action.displayName() + " release for tag '" + tag + "'"));
         }
     }
 
