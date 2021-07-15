@@ -5,7 +5,7 @@
     <parent>
         <groupId>net.openhft</groupId>
         <artifactId>chronicle-release-notes-parent</artifactId>
-        <version>1.0.6-SNAPSHOT</version>
+        <version>1.0.6</version>
     </parent>
 
     <artifactId>chronicle-release-notes-connector-parent</artifactId>
@@ -24,25 +24,25 @@
             <dependency>
                 <groupId>net.openhft</groupId>
                 <artifactId>chronicle-release-notes-connector-api</artifactId>
-                <version>1.0.6-SNAPSHOT</version>
+                <version>1.0.6</version>
             </dependency>
 
             <dependency>
                 <groupId>net.openhft</groupId>
                 <artifactId>chronicle-release-notes-connector-github</artifactId>
-                <version>1.0.6-SNAPSHOT</version>
+                <version>1.0.6</version>
             </dependency>
 
             <dependency>
                 <groupId>net.openhft</groupId>
                 <artifactId>chronicle-release-notes-creator</artifactId>
-                <version>1.0.6-SNAPSHOT</version>
+                <version>1.0.6</version>
             </dependency>
 
             <dependency>
                 <groupId>net.openhft</groupId>
                 <artifactId>chronicle-release-notes-model</artifactId>
-                <version>1.0.6-SNAPSHOT</version>
+                <version>1.0.6</version>
             </dependency>
 
             <dependency>
