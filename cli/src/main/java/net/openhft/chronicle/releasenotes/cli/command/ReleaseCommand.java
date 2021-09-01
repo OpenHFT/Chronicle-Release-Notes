@@ -125,6 +125,7 @@ public final class ReleaseCommand implements Runnable {
             .ignoreLabels(ignoreLabels)
             .overrideRelease(override)
             .includeIssuesWithoutClosingKeyword(!requireCloseReference)
+            .includeAdditionalContext(false)
             .build();
 
         final ReleaseResult releaseResult = (endTag == null || endTag.isEmpty())
@@ -145,7 +146,7 @@ public final class ReleaseCommand implements Runnable {
             .ignoreLabels(ignoreLabels)
             .overrideRelease(override)
             .build();
-        
+
         final ReleaseResult releaseResult = releaseConnector.createReleaseFromMilestone(repository, tag, milestone, releaseOptions);
 
         releaseResult.throwIfFail();

@@ -9,6 +9,8 @@ import net.openhft.chronicle.releasenotes.model.ReleaseNote;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -17,16 +19,17 @@ import java.util.List;
 final class MarkdownReleaseNoteCreatorTest {
 
     private static final List<Issue> ISSUES = new ArrayList<>();
+    private static final String URL_SCHEME = "https://test.com";
 
     private final MarkdownReleaseNoteCreator releaseCreator = new MarkdownReleaseNoteCreator();
 
     @BeforeAll
-    static void init() {
-        ISSUES.add(new Issue(1, "Sample Issue", Collections.emptyList()));
-        ISSUES.add(new Issue(2, "Sample Feature", Collections.singletonList(new Label("enhancement"))));
-        ISSUES.add(new Issue(3, "Sample Bug", Collections.singletonList(new Label("bug"))));
-        ISSUES.add(new Issue(4, "Sample Wontfix", Collections.singletonList(new Label("wontfix"))));
-        ISSUES.add(new Issue(5, "Sample Complex", Arrays.asList(new Label("enhancement"), new Label("wontfix"))));
+    static void init() throws MalformedURLException {
+        ISSUES.add(new Issue(1, "Sample Issue", Collections.emptyList(), Collections.emptyList(), new URL(URL_SCHEME)));
+        ISSUES.add(new Issue(2, "Sample Feature", Collections.singletonList(new Label("enhancement")), Collections.emptyList(), new URL(URL_SCHEME)));
+        ISSUES.add(new Issue(3, "Sample Bug", Collections.singletonList(new Label("bug")), Collections.emptyList(), new URL(URL_SCHEME)));
+        ISSUES.add(new Issue(4, "Sample Wontfix", Collections.singletonList(new Label("wontfix")), Collections.emptyList(), new URL(URL_SCHEME)));
+        ISSUES.add(new Issue(5, "Sample Complex", Arrays.asList(new Label("enhancement"), new Label("wontfix")), Collections.emptyList(), new URL(URL_SCHEME)));
     }
 
     @Test

@@ -176,6 +176,28 @@ final ReleaseResult releaseResult = releaseConnector.createReleaseFromMilestone(
 releaseResult.throwIfFail();
 ----
 
+== Providing additional context
+
+Sometimes an issue name might not be descriptive enough to provide enough context to the user reading the release notes. When creating a release, users are able to append additional information to specific issues in form of comments.
+
+To add more information to a specific issue, add a comment to the specific issue in the following format:
+
+[source, markdown]
+----
+#comment A comment that provides additional information to the user
+----
+
+Users may write multiple comments of this format, but only the latest comment will be included in the release notes.
+
+WARNING: Be cautious when using this feature on open source repositories. There are no checks in place to verify which users are allowed to write these comments.
+
+This option is disabled by default. To enable it, add the following line to your release options:
+
+[source, java]
+----
+.includeAdditionalContext(true)
+----
+
 == GraphQL Usage
 
 Chronicle Release Notes uses GitHub's REST API v3 to obtain *most* of the required information needed to generate release notes for a particular release. During the release note generation process, at a certain point we are required to fetch the project tags in a chronological order.

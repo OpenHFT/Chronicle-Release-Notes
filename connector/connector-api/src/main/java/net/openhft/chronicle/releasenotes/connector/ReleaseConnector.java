@@ -338,17 +338,20 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
         public static final BranchReleaseOptions DEFAULT = new BranchReleaseOptions(
             new ArrayList<>(),
             false,
+            false,
             false
         );
 
         private final List<String> ignoredLabels;
         private final boolean overrideRelease;
         private final boolean includeIssuesWithoutClosingKeyword;
+        private final boolean includeAdditionalContext;
 
-        private BranchReleaseOptions(List<String> ignoredLabels, boolean overrideRelease, boolean includeIssuesWithoutClosingKeyword) {
+        private BranchReleaseOptions(List<String> ignoredLabels, boolean overrideRelease, boolean includeIssuesWithoutClosingKeyword, boolean includeAdditionalContext) {
             this.ignoredLabels = ignoredLabels;
             this.overrideRelease = overrideRelease;
             this.includeIssuesWithoutClosingKeyword = includeIssuesWithoutClosingKeyword;
+            this.includeAdditionalContext = includeAdditionalContext;
         }
 
         public List<String> getIgnoredLabels() {
@@ -361,6 +364,10 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
 
         public boolean includeIssuesWithoutClosingKeyword() {
             return includeIssuesWithoutClosingKeyword;
+        }
+
+        public boolean includeAdditionalContext() {
+            return includeAdditionalContext;
         }
 
         @Override
@@ -377,6 +384,7 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
 
             private boolean overrideRelease;
             private boolean includeIssuesWithoutClosingKeyword;
+            private boolean includeAdditionalContext;
 
             public Builder ignoreLabels(String... labels) {
                 requireNonNull(labels);
@@ -404,11 +412,18 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
                 return this;
             }
 
+            public Builder includeAdditionalContext(boolean includeAdditionalContext) {
+                this.includeAdditionalContext = includeAdditionalContext;
+
+                return this;
+            }
+
             public BranchReleaseOptions build() {
                 return new BranchReleaseOptions(
                     ignoredLabels,
                     overrideRelease,
-                    includeIssuesWithoutClosingKeyword
+                    includeIssuesWithoutClosingKeyword,
+                    includeAdditionalContext
                 );
             }
         }
@@ -420,15 +435,18 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
     class MilestoneReleaseOptions {
         public static final MilestoneReleaseOptions DEFAULT = new MilestoneReleaseOptions(
             new ArrayList<>(),
+            false,
             false
         );
 
         private final List<String> ignoredLabels;
         private final boolean overrideRelease;
+        private final boolean includeAdditionalContext;
 
-        private MilestoneReleaseOptions(List<String> ignoredLabels, boolean overrideRelease) {
+        private MilestoneReleaseOptions(List<String> ignoredLabels, boolean overrideRelease, boolean includeAdditionalContext) {
             this.ignoredLabels = ignoredLabels;
             this.overrideRelease = overrideRelease;
+            this.includeAdditionalContext = includeAdditionalContext;
         }
 
         public List<String> getIgnoredLabels() {
@@ -437,6 +455,10 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
 
         public boolean overrideRelease() {
             return overrideRelease;
+        }
+
+        public boolean includeAdditionalContext() {
+            return includeAdditionalContext;
         }
 
         @Override
@@ -451,6 +473,7 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
             private final List<String> ignoredLabels = new ArrayList<>();
 
             private boolean overrideRelease;
+            private boolean includeAdditionalContext;
 
             public Builder ignoreLabels(String... labels) {
                 requireNonNull(labels);
@@ -472,10 +495,17 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
                 return this;
             }
 
+            public Builder includeAdditionalContext(boolean includeAdditionalContext) {
+                this.includeAdditionalContext = includeAdditionalContext;
+
+                return this;
+            }
+
             public MilestoneReleaseOptions build() {
                 return new MilestoneReleaseOptions(
                     ignoredLabels,
-                    overrideRelease
+                    overrideRelease,
+                    includeAdditionalContext
                 );
             }
         }

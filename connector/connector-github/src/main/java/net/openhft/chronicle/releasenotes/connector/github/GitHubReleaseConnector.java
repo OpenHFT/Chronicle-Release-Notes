@@ -10,6 +10,7 @@ import net.openhft.chronicle.releasenotes.connector.github.graphql.GitHubGraphQL
 import net.openhft.chronicle.releasenotes.connector.github.graphql.model.Tag;
 import net.openhft.chronicle.releasenotes.creator.ReleaseNoteCreator;
 import net.openhft.chronicle.releasenotes.model.Issue;
+import net.openhft.chronicle.releasenotes.model.IssueComment;
 import net.openhft.chronicle.releasenotes.model.Label;
 import net.openhft.chronicle.releasenotes.model.ReleaseNote;
 import org.apache.logging.log4j.LogManager;
@@ -18,6 +19,7 @@ import org.kohsuke.github.GHBranch;
 import org.kohsuke.github.GHCommit;
 import org.kohsuke.github.GHCommitQueryBuilder;
 import org.kohsuke.github.GHIssue;
+import org.kohsuke.github.GHIssueComment;
 import org.kohsuke.github.GHIssueState;
 import org.kohsuke.github.GHMilestone;
 import org.kohsuke.github.GHRelease;
@@ -34,6 +36,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -111,7 +114,8 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
                 tag,
                 () -> getIssuesForBranch(repositoryRef, branch, tag, releaseOptions.includeIssuesWithoutClosingKeyword()),
                 releaseOptions.getIgnoredLabels(),
-                releaseOptions.overrideRelease() ? ReleaseAction.CREATE_OR_UPDATE : ReleaseAction.CREATE
+                releaseOptions.overrideRelease() ? ReleaseAction.CREATE_OR_UPDATE : ReleaseAction.CREATE,
+                releaseOptions.includeAdditionalContext()
             );
         } catch (RuntimeException e) {
             return ReleaseResult.fail(e);
@@ -138,7 +142,8 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
                 tag,
                 () -> getIssuesForBranch(repositoryRef, branch, tag, endTag, releaseOptions.includeIssuesWithoutClosingKeyword()),
                 releaseOptions.getIgnoredLabels(),
-                releaseOptions.overrideRelease() ? ReleaseAction.CREATE_OR_UPDATE : ReleaseAction.CREATE
+                releaseOptions.overrideRelease() ? ReleaseAction.CREATE_OR_UPDATE : ReleaseAction.CREATE,
+                releaseOptions.includeAdditionalContext()
             );
         } catch (RuntimeException e) {
             return ReleaseResult.fail(e);
@@ -163,7 +168,8 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
                 repositoryRef,
                 tag, () -> getClosedMilestoneIssues(repositoryRef, milestone),
                 releaseOptions.getIgnoredLabels(),
-                releaseOptions.overrideRelease() ? ReleaseAction.CREATE_OR_UPDATE : ReleaseAction.CREATE
+                releaseOptions.overrideRelease() ? ReleaseAction.CREATE_OR_UPDATE : ReleaseAction.CREATE,
+                releaseOptions.includeAdditionalContext()
             );
         } catch (RuntimeException e) {
             return ReleaseResult.fail(e);
@@ -361,7 +367,8 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
                     tag,
                     () -> getIssuesForBranch(repositoryRef, branch, tag, releaseOptions.includeIssuesWithoutClosingKeyword()),
                     releaseOptions.getIgnoredLabels(),
-                    ReleaseAction.QUERY
+                    ReleaseAction.QUERY,
+                    releaseOptions.includeAdditionalContext()
             );
         } catch (RuntimeException e) {
             return ReleaseResult.fail(e);
@@ -389,7 +396,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
         }
     }
 
-    private ReleaseResult getOrCreateRelease(GHRepository repository, String tag, Supplier<List<GHIssue>> issueSupplier, List<String> ignoredLabels, ReleaseAction action) {
+    private ReleaseResult getOrCreateRelease(GHRepository repository, String tag, Supplier<List<GHIssue>> issueSupplier, List<String> ignoredLabels, ReleaseAction action, boolean includeAdditionalContext) {
         requireNonNull(repository);
         requireNonNull(tag);
         requireNonNull(issueSupplier);
@@ -408,7 +415,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
 
                 final List<Issue> issues = filterIssueLabels(issueSupplier.get(), ignoredLabels)
                     .stream()
-                    .map(this::mapIssue)
+                    .map(issue -> mapIssue(issue, includeAdditionalContext))
                     .collect(toList());
 
                 final ReleaseNote releaseNote = releaseNoteCreator.createReleaseNote(tag, issues);
@@ -432,7 +439,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
 
             final List<Issue> issues = filterIssueLabels(issueSupplier.get(), ignoredLabels)
                 .stream()
-                .map(this::mapIssue)
+                .map(issue -> mapIssue(issue, includeAdditionalContext))
                 .collect(toList());
 
             final ReleaseNote releaseNote = releaseNoteCreator.createReleaseNote(tag, issues);
@@ -784,13 +791,34 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
             .collect(toList());
     }
 
-    private Issue mapIssue(GHIssue issue) {
+    private Issue mapIssue(GHIssue issue, boolean includeAdditionalContext) {
         return new Issue(
             issue.getNumber(),
             issue.getTitle(),
             issue.getLabels().stream().map(ghLabel -> new Label(ghLabel.getName())).collect(toList()),
+            mapIssueComments(issue, includeAdditionalContext),
             issue.getHtmlUrl()
         );
+    }
+
+    private List<IssueComment> mapIssueComments(GHIssue issue, boolean includeAdditionalContext) {
+        if (!includeAdditionalContext) {
+            return Collections.emptyList();
+        }
+
+        try {
+            return issue.getComments().stream().map(this::mapIssueComment).collect(Collectors.toList());
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to fetch comments for issue #" + issue.getNumber());
+        }
+    }
+
+    private IssueComment mapIssueComment(GHIssueComment issueComment) {
+        try {
+            return new IssueComment(issueComment.getBody(), issueComment.getCreatedAt());
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to map issue comment to internal model");
+        }
     }
 
     private List<GHIssue> getClosedMilestoneIssues(GHRepository repository, String milestone) {
