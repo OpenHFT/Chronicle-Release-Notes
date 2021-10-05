@@ -13,6 +13,7 @@ import org.apache.logging.log4j.Logger;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
+import java.util.Collections;
 import java.util.List;
 
 @Command(
@@ -63,7 +64,7 @@ public final class ReleaseCommand implements Runnable {
         split = ",",
         arity = "1..*"
     )
-    private List<String> ignoreLabels;
+    private List<String> ignoreLabels = Collections.emptyList();
 
     @Option(
         names = {"-o", "--override"},
