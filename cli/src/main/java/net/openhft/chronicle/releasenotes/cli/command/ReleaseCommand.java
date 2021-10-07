@@ -8,8 +8,8 @@ import net.openhft.chronicle.releasenotes.connector.ReleaseConnector;
 import net.openhft.chronicle.releasenotes.connector.ReleaseConnector.BranchReleaseOptions;
 import net.openhft.chronicle.releasenotes.connector.ReleaseConnector.MilestoneReleaseOptions;
 import net.openhft.chronicle.releasenotes.connector.ReleaseConnector.ReleaseResult;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
@@ -22,7 +22,7 @@ import java.util.List;
 )
 public final class ReleaseCommand implements Runnable {
 
-    private static final Logger LOGGER = LogManager.getLogger(ReleaseCommand.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ReleaseCommand.class);
 
     @Option(
         names = {"-t", "--tag"},

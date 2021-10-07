@@ -13,8 +13,6 @@ import net.openhft.chronicle.releasenotes.model.Issue;
 import net.openhft.chronicle.releasenotes.model.IssueComment;
 import net.openhft.chronicle.releasenotes.model.Label;
 import net.openhft.chronicle.releasenotes.model.ReleaseNote;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.kohsuke.github.GHBranch;
 import org.kohsuke.github.GHCommit;
 import org.kohsuke.github.GHCommitQueryBuilder;
@@ -29,6 +27,8 @@ import org.kohsuke.github.GitHub;
 import org.kohsuke.github.GitHubBuilder;
 import org.kohsuke.github.PagedIterable;
 import org.kohsuke.github.RateLimitHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
@@ -74,7 +74,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
     private final Logger logger;
 
     public GitHubReleaseConnector(String token) throws IOException {
-        this(token, LogManager.getLogger(GitHubReleaseConnector.class));
+        this(token, LoggerFactory.getLogger(GitHubReleaseConnector.class));
     }
 
     public GitHubReleaseConnector(String token, Logger logger) throws IOException {
