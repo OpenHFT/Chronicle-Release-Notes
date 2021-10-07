@@ -81,6 +81,13 @@ public final class ReleaseCommand implements Runnable {
     private boolean requireCloseReference;
 
     @Option(
+            names = {"-P", "--allowPullRequests"},
+            description = "Specifies that pull requests should be included as well as issues",
+            defaultValue = "false"
+    )
+    private boolean allowPullRequests;
+
+    @Option(
         names = {"-T", "--token"},
         description = "Specifies a GitHub personal access token used to gain access to the GitHub API",
         required = true,
@@ -126,6 +133,7 @@ public final class ReleaseCommand implements Runnable {
             .ignoreLabels(ignoreLabels)
             .overrideRelease(override)
             .includeIssuesWithoutClosingKeyword(!requireCloseReference)
+            .includePullRequests(allowPullRequests)
             .includeAdditionalContext(false)
             .build();
 

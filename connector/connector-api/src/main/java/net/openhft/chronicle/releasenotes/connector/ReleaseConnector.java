@@ -339,18 +339,21 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
             new ArrayList<>(),
             false,
             false,
+            false,
             false
         );
 
         private final List<String> ignoredLabels;
         private final boolean overrideRelease;
         private final boolean includeIssuesWithoutClosingKeyword;
+        private final boolean includePullRequests;
         private final boolean includeAdditionalContext;
 
-        private BranchReleaseOptions(List<String> ignoredLabels, boolean overrideRelease, boolean includeIssuesWithoutClosingKeyword, boolean includeAdditionalContext) {
+        private BranchReleaseOptions(List<String> ignoredLabels, boolean overrideRelease, boolean includeIssuesWithoutClosingKeyword, boolean includePullRequests, boolean includeAdditionalContext) {
             this.ignoredLabels = ignoredLabels;
             this.overrideRelease = overrideRelease;
             this.includeIssuesWithoutClosingKeyword = includeIssuesWithoutClosingKeyword;
+            this.includePullRequests = includePullRequests;
             this.includeAdditionalContext = includeAdditionalContext;
         }
 
@@ -366,6 +369,10 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
             return includeIssuesWithoutClosingKeyword;
         }
 
+        public boolean includePullRequests() {
+            return includePullRequests;
+        }
+
         public boolean includeAdditionalContext() {
             return includeAdditionalContext;
         }
@@ -376,6 +383,8 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
                     "ignoredLabels=" + ignoredLabels +
                     ", overrideRelease=" + overrideRelease +
                     ", includeIssuesWithoutClosingKeyword=" + includeIssuesWithoutClosingKeyword +
+                    ", includePullRequests=" + includePullRequests +
+                    ", includeAdditionalContext=" + includeAdditionalContext +
                     '}';
         }
 
@@ -384,6 +393,7 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
 
             private boolean overrideRelease;
             private boolean includeIssuesWithoutClosingKeyword;
+            private boolean includePullRequests;
             private boolean includeAdditionalContext;
 
             public Builder ignoreLabels(String... labels) {
@@ -412,6 +422,12 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
                 return this;
             }
 
+            public Builder includePullRequests(boolean includePullRequests) {
+                this.includePullRequests = includePullRequests;
+
+                return this;
+            }
+
             public Builder includeAdditionalContext(boolean includeAdditionalContext) {
                 this.includeAdditionalContext = includeAdditionalContext;
 
@@ -423,6 +439,7 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
                     ignoredLabels,
                     overrideRelease,
                     includeIssuesWithoutClosingKeyword,
+                    includePullRequests,
                     includeAdditionalContext
                 );
             }

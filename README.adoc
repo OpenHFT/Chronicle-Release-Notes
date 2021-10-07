@@ -130,6 +130,11 @@ overrideRelease(boolean overrideRelease)
 * If true, then any referenced issue will be included in the generated release notes. Otherwise, an issue reference needs to be preceeded by a closing keyword.
 */
 includeIssuesWithoutClosingKeyword(boolean include)
+
+/**
+* If true, then any referenced pull request will be included in the generated release notes alongside issues. Otherwise, pull requests are not allowed (default).
+*/
+includePullRequests(boolean include)
 ----
 
 These options can be modified via `BranchReleaseOptions::Builder`:
@@ -140,6 +145,7 @@ final BranchReleaseOptions releaseOptions = new BranchReleaseOptions.Builder()
     .ignoreLabels("wontfix")
     .overrideRelease(true)
     .includeIssuesWithoutClosingKeyword(true)
+    .includePullRequests(false)
     .build();
 
 final ReleaseResult releaseResult = releaseConnector.createReleaseFromBranch("owner/repository", "1.0.0", "master", releaseOptions);

@@ -112,7 +112,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
             return getOrCreateRelease(
                 repositoryRef,
                 tag,
-                () -> getIssuesForBranch(repositoryRef, branch, tag, releaseOptions.includeIssuesWithoutClosingKeyword()),
+                () -> getIssuesForBranch(repositoryRef, branch, tag, releaseOptions.includeIssuesWithoutClosingKeyword(), releaseOptions.includePullRequests()),
                 releaseOptions.getIgnoredLabels(),
                 releaseOptions.overrideRelease() ? ReleaseAction.CREATE_OR_UPDATE : ReleaseAction.CREATE,
                 releaseOptions.includeAdditionalContext()
@@ -140,7 +140,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
             return getOrCreateRelease(
                 repositoryRef,
                 tag,
-                () -> getIssuesForBranch(repositoryRef, branch, tag, endTag, releaseOptions.includeIssuesWithoutClosingKeyword()),
+                () -> getIssuesForBranch(repositoryRef, branch, tag, endTag, releaseOptions.includeIssuesWithoutClosingKeyword(), releaseOptions.includePullRequests()),
                 releaseOptions.getIgnoredLabels(),
                 releaseOptions.overrideRelease() ? ReleaseAction.CREATE_OR_UPDATE : ReleaseAction.CREATE,
                 releaseOptions.includeAdditionalContext()
@@ -365,7 +365,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
             return getOrCreateRelease(
                     repositoryRef,
                     tag,
-                    () -> getIssuesForBranch(repositoryRef, branch, tag, releaseOptions.includeIssuesWithoutClosingKeyword()),
+                    () -> getIssuesForBranch(repositoryRef, branch, tag, releaseOptions.includeIssuesWithoutClosingKeyword(), releaseOptions.includePullRequests()),
                     releaseOptions.getIgnoredLabels(),
                     ReleaseAction.QUERY,
                     releaseOptions.includeAdditionalContext()
@@ -584,15 +584,15 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
         }
     }
 
-    private List<GHIssue> getIssuesForBranch(GHRepository repository, String branch, String startTag, boolean includeIssuesWithoutClosingKeyword) {
+    private List<GHIssue> getIssuesForBranch(GHRepository repository, String branch, String startTag, boolean includeIssuesWithoutClosingKeyword, boolean includePullRequests) {
         requireNonNull(repository);
         requireNonNull(branch);
         requireNonNull(startTag);
 
-        return getIssuesForBranch(repository, branch, startTag, null, includeIssuesWithoutClosingKeyword);
+        return getIssuesForBranch(repository, branch, startTag, null, includeIssuesWithoutClosingKeyword, includePullRequests);
     }
 
-    private List<GHIssue> getIssuesForBranch(GHRepository repository, String branch, String startTag, String endTag, boolean includeIssuesWithoutClosingKeyword) {
+    private List<GHIssue> getIssuesForBranch(GHRepository repository, String branch, String startTag, String endTag, boolean includeIssuesWithoutClosingKeyword, boolean includePullRequests) {
         requireNonNull(repository);
         requireNonNull(branch);
         requireNonNull(startTag);
@@ -602,7 +602,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
         final List<GHCommit> commits = getCommitsForBranch(repository, branch, startTag, endTag);
         final List<Integer> issueIds = extractIssueIdsFromCommits(commits, includeIssuesWithoutClosingKeyword);
 
-        return getIssuesFromIds(repository, issueIds);
+        return getIssuesFromIds(repository, issueIds, includePullRequests);
     }
 
     private List<GHCommit> getCommitsForBranch(GHRepository repository, String branch, String startTag, String endTag) {
@@ -764,7 +764,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
         return issueId.charAt(0) != '0';
     }
 
-    private List<GHIssue> getIssuesFromIds(GHRepository repository, List<Integer> ids) {
+    private List<GHIssue> getIssuesFromIds(GHRepository repository, List<Integer> ids, boolean includePullRequests) {
         requireNonNull(repository);
 
         if (ids.isEmpty()) {
@@ -774,7 +774,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
         logger.debug("Fetching {} issues from repository '{}'", ids.size(), repository.getFullName());
 
         return stream(repository.listIssues(GHIssueState.CLOSED).withPageSize(REQUEST_PAGE_SIZE))
-            .filter(ghIssue -> ids.contains(ghIssue.getNumber()))
+            .filter(ghIssue -> ids.contains(ghIssue.getNumber()) && (includePullRequests || !ghIssue.isPullRequest()))
             .collect(toList());
     }
 
