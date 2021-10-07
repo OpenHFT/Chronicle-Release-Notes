@@ -5,14 +5,14 @@ import static java.util.stream.Collectors.toList;
 
 import net.openhft.chronicle.releasenotes.connector.ConnectorProviderKey;
 import net.openhft.chronicle.releasenotes.connector.MigrateConnector;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.kohsuke.github.GHIssue;
 import org.kohsuke.github.GHIssueState;
 import org.kohsuke.github.GHMilestone;
 import org.kohsuke.github.GHRepository;
 import org.kohsuke.github.GitHub;
 import org.kohsuke.github.GitHubBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.List;
@@ -33,7 +33,7 @@ public final class GitHubMigrateConnector implements MigrateConnector {
     private final Logger logger;
 
     public GitHubMigrateConnector(String token) throws IOException {
-        this(token, LogManager.getLogger(GitHubMigrateConnector.class));
+        this(token, LoggerFactory.getLogger(GitHubMigrateConnector.class));
     }
 
     public GitHubMigrateConnector(String token, Logger logger) throws IOException {
