@@ -9,24 +9,8 @@ import net.openhft.chronicle.releasenotes.connector.ReleaseConnector;
 import net.openhft.chronicle.releasenotes.connector.github.graphql.GitHubGraphQLClient;
 import net.openhft.chronicle.releasenotes.connector.github.graphql.model.Tag;
 import net.openhft.chronicle.releasenotes.creator.ReleaseNoteCreator;
-import net.openhft.chronicle.releasenotes.model.Issue;
-import net.openhft.chronicle.releasenotes.model.IssueComment;
-import net.openhft.chronicle.releasenotes.model.Label;
-import net.openhft.chronicle.releasenotes.model.ReleaseNote;
-import org.kohsuke.github.GHBranch;
-import org.kohsuke.github.GHCommit;
-import org.kohsuke.github.GHCommitQueryBuilder;
-import org.kohsuke.github.GHIssue;
-import org.kohsuke.github.GHIssueComment;
-import org.kohsuke.github.GHIssueState;
-import org.kohsuke.github.GHMilestone;
-import org.kohsuke.github.GHRelease;
-import org.kohsuke.github.GHRepository;
-import org.kohsuke.github.GHTag;
-import org.kohsuke.github.GitHub;
-import org.kohsuke.github.GitHubBuilder;
-import org.kohsuke.github.PagedIterable;
-import org.kohsuke.github.RateLimitHandler;
+import net.openhft.chronicle.releasenotes.model.*;
+import org.kohsuke.github.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -96,7 +80,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
     }
 
     @Override
-    public ReleaseResult createReleaseFromBranch(String repository, String tag, String branch, BranchReleaseOptions releaseOptions) {
+    public ReleaseResult<ReleaseNotes> createReleaseFromBranch(String repository, String tag, String branch, BranchReleaseOptions releaseOptions) {
         requireNonNull(repository);
         requireNonNull(tag);
         requireNonNull(branch);
@@ -123,7 +107,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
     }
 
     @Override
-    public ReleaseResult createReleaseFromBranch(String repository, String tag, String endTag, String branch, BranchReleaseOptions releaseOptions) {
+    public ReleaseResult<ReleaseNotes> createReleaseFromBranch(String repository, String tag, String endTag, String branch, BranchReleaseOptions releaseOptions) {
         requireNonNull(repository);
         requireNonNull(tag);
         requireNonNull(endTag);
@@ -151,7 +135,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
     }
 
     @Override
-    public ReleaseResult createReleaseFromMilestone(String repository, String tag, String milestone, MilestoneReleaseOptions releaseOptions) {
+    public ReleaseResult<ReleaseNotes> createReleaseFromMilestone(String repository, String tag, String milestone, MilestoneReleaseOptions releaseOptions) {
         requireNonNull(repository);
         requireNonNull(tag);
         requireNonNull(milestone);
@@ -177,7 +161,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
     }
 
     @Override
-    public ReleaseResult createAggregatedRelease(String repository, String tag, Map<String, List<String>> releases, AggregateReleaseOptions releaseOptions) {
+    public ReleaseResult<AggregatedReleaseNotes> createAggregatedRelease(String repository, String tag, Map<String, List<String>> releases, AggregateReleaseOptions releaseOptions) {
         requireNonNull(repository);
         requireNonNull(tag);
         requireNonNull(releases);
@@ -263,50 +247,44 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
                 return ReleaseResult.fail(new RuntimeException(exceptionMessage.toString()));
             }
 
-            final List<ReleaseNote> normalizedReleaseNotes = sourceReleases.values().stream()
+            final List<ReleaseNotes> normalizedReleaseNotes = sourceReleases.values().stream()
                 .map(stringGHReleaseMap -> stringGHReleaseMap.entrySet().stream().map(
                     entry -> {
                         final GHRelease release = entry.getValue();
 
                         if (release == null) {
-                            return new ReleaseNote(entry.getKey(), entry.getKey(), "");
+                            return new ReleaseNotes(entry.getKey(), entry.getKey(), Collections.emptyList());
                         }
 
-                        return new ReleaseNote(release.getTagName(), release.getName(), release.getBody());
+                        return new ReleaseNotes(release.getTagName(), release.getName(), Collections.emptyList());
                     }).collect(toList()))
                 .flatMap(Collection::stream)
                 .collect(toList());
+
+            AggregatedReleaseNotes aggregatedReleaseNotes = new AggregatedReleaseNotes(tag, tag, normalizedReleaseNotes);
+
+            final String body = releaseNoteCreator.formatAggregatedReleaseNotes(aggregatedReleaseNotes);
 
             if (remoteRelease != null) {
                 if (!releaseOptions.overrideRelease()) {
                     return ReleaseResult.fail(new RuntimeException("Release for tag '" + tag + "' already exists"));
                 }
 
-                final ReleaseNote releaseNote = releaseNoteCreator.createAggregatedReleaseNote(tag, normalizedReleaseNotes);
+                final GHRelease release = remoteRelease.update().name(tag).body(body).update();
 
-                final GHRelease release = remoteRelease.update()
-                    .name(releaseNote.getTitle())
-                    .body(releaseNote.getBody())
-                    .update();
-
-                return ReleaseResult.success(releaseNote, release.getHtmlUrl());
+                return ReleaseResult.success(aggregatedReleaseNotes, release.getHtmlUrl());
             }
 
-            final ReleaseNote releaseNote = releaseNoteCreator.createAggregatedReleaseNote(tag, normalizedReleaseNotes);
+            final GHRelease release = repositoryRef.createRelease(tag).name(tag).body(body).create();
 
-            final GHRelease release = repositoryRef.createRelease(releaseNote.getTag())
-                .name(releaseNote.getTitle())
-                .body(releaseNote.getBody())
-                .create();
-
-            return ReleaseResult.success(releaseNote, release.getHtmlUrl());
+            return ReleaseResult.success(aggregatedReleaseNotes, release.getHtmlUrl());
         } catch (IOException e) {
             return ReleaseResult.fail(new RuntimeException("Failed to create release for tag '" + tag + "'"));
         }
     }
 
     @Override
-    public ReleaseResult createAggregatedRelease(String repository, String tag, List<ReleaseNote> releaseNotes, AggregateReleaseOptions releaseOptions) {
+    public ReleaseResult<AggregatedReleaseNotes> createAggregatedRelease(String repository, String tag, List<ReleaseNotes> releaseNotes, AggregateReleaseOptions releaseOptions) {
         requireNonNull(repository);
         requireNonNull(tag);
         requireNonNull(releaseNotes);
@@ -320,36 +298,30 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
 
             final GHRelease remoteRelease = repositoryRef.getReleaseByTagName(tag);
 
+            final AggregatedReleaseNotes aggregatedReleaseNotes = new AggregatedReleaseNotes(tag, tag, releaseNotes);
+
+            final String body = releaseNoteCreator.formatAggregatedReleaseNotes(aggregatedReleaseNotes);
+
             if (remoteRelease != null) {
                 if (!releaseOptions.overrideRelease()) {
                     return ReleaseResult.fail(new RuntimeException("Release for tag '" + tag + "' already exists"));
                 }
 
-                final ReleaseNote releaseNote = releaseNoteCreator.createAggregatedReleaseNote(tag, releaseNotes);
+                final GHRelease release = remoteRelease.update().name(tag).body(body).update();
 
-                final GHRelease release = remoteRelease.update()
-                    .name(releaseNote.getTitle())
-                    .body(releaseNote.getBody())
-                    .update();
-
-                return ReleaseResult.success(releaseNote, release.getHtmlUrl());
+                return ReleaseResult.success(aggregatedReleaseNotes, release.getHtmlUrl());
             }
 
-            final ReleaseNote releaseNote = releaseNoteCreator.createAggregatedReleaseNote(tag, releaseNotes);
+            final GHRelease release = repositoryRef.createRelease(tag).name(tag).body(body).create();
 
-            final GHRelease release = repositoryRef.createRelease(releaseNote.getTag())
-                .name(releaseNote.getTitle())
-                .body(releaseNote.getBody())
-                .create();
-
-            return ReleaseResult.success(releaseNote, release.getHtmlUrl());
+            return ReleaseResult.success(aggregatedReleaseNotes, release.getHtmlUrl());
         } catch (IOException e) {
             return ReleaseResult.fail(new RuntimeException("Failed to create release for tag '" + tag + "'"));
         }
     }
 
     @Override
-    public ReleaseResult queryReleaseFromBranch(String repository, String tag, String branch, BranchReleaseOptions releaseOptions) {
+    public ReleaseResult<ReleaseNotes> queryReleaseFromBranch(String repository, String tag, String branch, BranchReleaseOptions releaseOptions) {
         requireNonNull(repository);
         requireNonNull(tag);
         requireNonNull(branch);
@@ -396,7 +368,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
         }
     }
 
-    private ReleaseResult getOrCreateRelease(GHRepository repository, String tag, Supplier<List<GHIssue>> issueSupplier, List<String> ignoredLabels, ReleaseAction action, boolean includeAdditionalContext) {
+    private ReleaseResult<ReleaseNotes> getOrCreateRelease(GHRepository repository, String tag, Supplier<List<GHIssue>> issueSupplier, List<String> ignoredLabels, ReleaseAction action, boolean includeAdditionalContext) {
         requireNonNull(repository);
         requireNonNull(tag);
         requireNonNull(issueSupplier);
@@ -406,6 +378,15 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
                 return ReleaseResult.fail(new RuntimeException("Tag '" + tag + "' not found"));
             }
 
+            final List<Issue> issues = filterIssueLabels(issueSupplier.get(), ignoredLabels)
+                .stream()
+                .map(issue -> mapIssue(issue, includeAdditionalContext))
+                .collect(toList());
+
+            final ReleaseNotes releaseNotes = new ReleaseNotes(tag, tag, issues);
+
+            final String body = releaseNoteCreator.formatReleaseNotes(releaseNotes);
+
             final GHRelease remoteRelease = repository.getReleaseByTagName(tag);
 
             if (remoteRelease != null) {
@@ -413,43 +394,24 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
                     return ReleaseResult.fail(new RuntimeException("Release for tag '" + tag + "' already exists"));
                 }
 
-                final List<Issue> issues = filterIssueLabels(issueSupplier.get(), ignoredLabels)
-                    .stream()
-                    .map(issue -> mapIssue(issue, includeAdditionalContext))
-                    .collect(toList());
-
-                final ReleaseNote releaseNote = releaseNoteCreator.createReleaseNote(tag, issues);
 
                 URL htmlUrl;
                 if (action == ReleaseAction.CREATE_OR_UPDATE) {
-                    final GHRelease release = remoteRelease.update()
-                            .name(releaseNote.getTitle())
-                            .body(releaseNote.getBody())
-                            .update();
+                    final GHRelease release = remoteRelease.update().name(tag).body(body).update();
 
                     htmlUrl = release.getHtmlUrl();
                 } else {
                     htmlUrl = remoteRelease.getHtmlUrl();
                 }
 
-                return ReleaseResult.success(releaseNote, htmlUrl);
+                return ReleaseResult.success(releaseNotes, htmlUrl);
             } else if (action == ReleaseAction.QUERY) {
                 return ReleaseResult.fail(new RuntimeException("Release for tag '" + tag + "' does not exists"));
             }
 
-            final List<Issue> issues = filterIssueLabels(issueSupplier.get(), ignoredLabels)
-                .stream()
-                .map(issue -> mapIssue(issue, includeAdditionalContext))
-                .collect(toList());
+            final GHRelease release = repository.createRelease(releaseNotes.getTag()).name(tag).body(body).create();
 
-            final ReleaseNote releaseNote = releaseNoteCreator.createReleaseNote(tag, issues);
-
-            final GHRelease release = repository.createRelease(releaseNote.getTag())
-                .name(releaseNote.getTitle())
-                .body(releaseNote.getBody())
-                .create();
-
-            return ReleaseResult.success(releaseNote, release.getHtmlUrl());
+            return ReleaseResult.success(releaseNotes, release.getHtmlUrl());
         } catch (IOException e) {
             return ReleaseResult.fail(new RuntimeException("Failed to " + action.displayName() + " release for tag '" + tag + "'"));
         }
@@ -791,11 +753,11 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
             .collect(toList());
     }
 
-    private Issue mapIssue(GHIssue issue, boolean includeAdditionalContext) {
-        return new Issue(
+    private FullIssue mapIssue(GHIssue issue, boolean includeAdditionalContext) {
+        return new FullIssue(
             issue.getNumber(),
             issue.getTitle(),
-            issue.getLabels().stream().map(ghLabel -> new Label(ghLabel.getName())).collect(toList()),
+            issue.getLabels().stream().map(GHLabel::getName).collect(toList()),
             mapIssueComments(issue, includeAdditionalContext),
             issue.getHtmlUrl()
         );

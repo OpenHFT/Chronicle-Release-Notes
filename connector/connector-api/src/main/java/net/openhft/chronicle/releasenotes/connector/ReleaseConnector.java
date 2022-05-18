@@ -2,7 +2,8 @@ package net.openhft.chronicle.releasenotes.connector;
 
 import static java.util.Objects.requireNonNull;
 
-import net.openhft.chronicle.releasenotes.model.ReleaseNote;
+import net.openhft.chronicle.releasenotes.model.AggregatedReleaseNotes;
+import net.openhft.chronicle.releasenotes.model.ReleaseNotes;
 
 import java.net.URL;
 import java.util.ArrayList;
@@ -29,7 +30,7 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
      * @param branch reference
      * @return {@link ReleaseResult}
      */
-    ReleaseResult createReleaseFromBranch(String repository, String tag, String branch, BranchReleaseOptions releaseOptions);
+    ReleaseResult<ReleaseNotes> createReleaseFromBranch(String repository, String tag, String branch, BranchReleaseOptions releaseOptions);
 
     /**
      * Creates a release for a provided {@code tag} and returns a
@@ -45,7 +46,7 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
      * @param branch reference
      * @return {@link ReleaseResult}
      */
-    default ReleaseResult createReleaseFromBranch(String repository, String tag, String branch) {
+    default ReleaseResult<ReleaseNotes> createReleaseFromBranch(String repository, String tag, String branch) {
         return createReleaseFromBranch(repository, tag, branch, BranchReleaseOptions.DEFAULT);
     }
 
@@ -63,7 +64,7 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
      * @param branch reference
      * @return {@link ReleaseResult}
      */
-    ReleaseResult createReleaseFromBranch(String repository, String tag, String endTag, String branch, BranchReleaseOptions releaseOptions);
+    ReleaseResult<ReleaseNotes> createReleaseFromBranch(String repository, String tag, String endTag, String branch, BranchReleaseOptions releaseOptions);
 
     /**
      * Creates a release for a provided {@code tag} and returns a
@@ -79,7 +80,7 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
      * @param branch reference
      * @return {@link ReleaseResult}
      */
-    default ReleaseResult createReleaseFromBranch(String repository, String tag, String endTag, String branch) {
+    default ReleaseResult<ReleaseNotes> createReleaseFromBranch(String repository, String tag, String endTag, String branch) {
         return createReleaseFromBranch(repository, tag, endTag, branch, BranchReleaseOptions.DEFAULT);
     }
 
@@ -94,7 +95,7 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
      * @param milestone issues to include in the release
      * @return {@link ReleaseResult}
      */
-    ReleaseResult createReleaseFromMilestone(String repository, String tag, String milestone, MilestoneReleaseOptions milestoneReleaseOptions);
+    ReleaseResult<ReleaseNotes> createReleaseFromMilestone(String repository, String tag, String milestone, MilestoneReleaseOptions milestoneReleaseOptions);
 
     /**
      * Creates a release for a provided {@code tag} and returns a
@@ -107,7 +108,7 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
      * @param milestone issues to include in the release
      * @return {@link ReleaseResult}
      */
-    default ReleaseResult createReleaseFromMilestone(String repository, String tag, String milestone) {
+    default ReleaseResult<ReleaseNotes> createReleaseFromMilestone(String repository, String tag, String milestone) {
         return createReleaseFromMilestone(repository, tag, milestone, MilestoneReleaseOptions.DEFAULT);
     }
 
@@ -122,7 +123,7 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
      * @param releases to include in the aggregated release
      * @return {@link ReleaseResult}
      */
-    ReleaseResult createAggregatedRelease(String repository, String tag, Map<String, List<String>> releases, AggregateReleaseOptions releaseOptions);
+    ReleaseResult<AggregatedReleaseNotes> createAggregatedRelease(String repository, String tag, Map<String, List<String>> releases, AggregateReleaseOptions releaseOptions);
 
     /**
      * Creates and a release for a provided {@code tag} and returns a
@@ -135,7 +136,7 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
      * @param releases to include in the aggregated release
      * @return {@link ReleaseResult}
      */
-    default ReleaseResult createAggregatedRelease(String repository, String tag, Map<String, List<String>> releases) {
+    default ReleaseResult<AggregatedReleaseNotes> createAggregatedRelease(String repository, String tag, Map<String, List<String>> releases) {
         return createAggregatedRelease(repository, tag, releases, AggregateReleaseOptions.DEFAULT);
     }
 
@@ -149,7 +150,7 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
      * @param releaseNotes to include in the aggregated release
      * @return {@link ReleaseResult}
      */
-    ReleaseResult createAggregatedRelease(String repository, String tag, List<ReleaseNote> releaseNotes, AggregateReleaseOptions releaseOptions);
+    ReleaseResult<AggregatedReleaseNotes> createAggregatedRelease(String repository, String tag, List<ReleaseNotes> releaseNotes, AggregateReleaseOptions releaseOptions);
 
     /**
      * Creates and a release for a provided {@code tag} and returns a
@@ -161,7 +162,7 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
      * @param releaseNotes to include in the aggregated release
      * @return {@link ReleaseResult}
      */
-    default ReleaseResult createAggregatedRelease(String repository, String tag, List<ReleaseNote> releaseNotes) {
+    default ReleaseResult<AggregatedReleaseNotes> createAggregatedRelease(String repository, String tag, List<ReleaseNotes> releaseNotes) {
         return createAggregatedRelease(repository, tag, releaseNotes, AggregateReleaseOptions.DEFAULT);
     }
 
@@ -179,7 +180,7 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
      * @param branch reference
      * @return {@link ReleaseResult}
      */
-    ReleaseResult queryReleaseFromBranch(String repository, String tag, String branch, BranchReleaseOptions releaseOptions);
+    ReleaseResult<ReleaseNotes> queryReleaseFromBranch(String repository, String tag, String branch, BranchReleaseOptions releaseOptions);
 
     /**
      * Queries an existing release for a provided {@code tag} and returns a
@@ -195,7 +196,7 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
      * @param branch reference
      * @return {@link ReleaseResult}
      */
-    default ReleaseResult queryReleaseFromBranch(String repository, String tag, String branch) {
+    default ReleaseResult<ReleaseNotes> queryReleaseFromBranch(String repository, String tag, String branch) {
         return createReleaseFromBranch(repository, tag, branch, BranchReleaseOptions.DEFAULT);
     }
 
@@ -205,7 +206,7 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
     }
 
     @Deprecated
-    default ReleaseResult createReleaseFromBranch(String repository, String tag, String branch, List<String> ignoredLabels, boolean override) {
+    default ReleaseResult<ReleaseNotes> createReleaseFromBranch(String repository, String tag, String branch, List<String> ignoredLabels, boolean override) {
         final BranchReleaseOptions releaseOptions = new BranchReleaseOptions.Builder()
             .ignoreLabels(ignoredLabels)
             .overrideRelease(override)
@@ -215,12 +216,12 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
     }
 
     @Deprecated
-    default ReleaseResult createReleaseFromBranch(String repository, String tag, String branch, List<String> ignoredLabels) {
+    default ReleaseResult<ReleaseNotes> createReleaseFromBranch(String repository, String tag, String branch, List<String> ignoredLabels) {
         return createReleaseFromBranch(repository, tag, branch, ignoredLabels, false);
     }
 
     @Deprecated
-    default ReleaseResult createReleaseFromBranch(String repository, String tag, String endTag, String branch, List<String> ignoredLabels, boolean override) {
+    default ReleaseResult<ReleaseNotes> createReleaseFromBranch(String repository, String tag, String endTag, String branch, List<String> ignoredLabels, boolean override) {
         final BranchReleaseOptions releaseOptions = new BranchReleaseOptions.Builder()
             .ignoreLabels(ignoredLabels)
             .overrideRelease(override)
@@ -230,12 +231,12 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
     }
 
     @Deprecated
-    default ReleaseResult createReleaseFromBranch(String repository, String tag, String endTag, String branch, List<String> ignoredLabels) {
+    default ReleaseResult<ReleaseNotes> createReleaseFromBranch(String repository, String tag, String endTag, String branch, List<String> ignoredLabels) {
         return createReleaseFromBranch(repository, tag, endTag, branch, ignoredLabels, false);
     }
 
     @Deprecated
-    default ReleaseResult createReleaseFromMilestone(String repository, String tag, String milestone, List<String> ignoredLabels, boolean override) {
+    default ReleaseResult<ReleaseNotes> createReleaseFromMilestone(String repository, String tag, String milestone, List<String> ignoredLabels, boolean override) {
         final MilestoneReleaseOptions releaseOptions = new MilestoneReleaseOptions.Builder()
             .ignoreLabels(ignoredLabels)
             .overrideRelease(override)
@@ -245,12 +246,12 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
     }
 
     @Deprecated
-    default ReleaseResult createReleaseFromMilestone(String repository, String tag, String milestone, List<String> ignoredLabels) {
+    default ReleaseResult<ReleaseNotes> createReleaseFromMilestone(String repository, String tag, String milestone, List<String> ignoredLabels) {
         return createReleaseFromMilestone(repository, tag, milestone, ignoredLabels, false);
     }
 
     @Deprecated
-    default ReleaseResult createAggregatedRelease(String repository, String tag, Map<String, List<String>> releases, boolean override) {
+    default ReleaseResult<AggregatedReleaseNotes> createAggregatedRelease(String repository, String tag, Map<String, List<String>> releases, boolean override) {
         final AggregateReleaseOptions releaseOptions = new AggregateReleaseOptions.Builder()
             .overrideRelease(override)
             .build();
@@ -259,7 +260,7 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
     }
 
     @Deprecated
-    default ReleaseResult createAggregatedRelease(String repository, String tag, List<ReleaseNote> releaseNotes, boolean override) {
+    default ReleaseResult<AggregatedReleaseNotes> createAggregatedRelease(String repository, String tag, List<ReleaseNotes> releaseNotes, boolean override) {
         final AggregateReleaseOptions releaseOptions = new AggregateReleaseOptions.Builder()
             .overrideRelease(override)
             .build();
@@ -270,19 +271,19 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
     /**
      * @author Mislav Milicevic
      */
-    final class ReleaseResult {
-        private final ReleaseNote releaseNote;
+    final class ReleaseResult<T> {
+        private final T releaseNotes;
         private final URL releaseUrl;
         private final ReleaseException error;
 
-        private ReleaseResult(ReleaseNote releaseNote, URL releaseUrl, ReleaseException error) {
-            this.releaseNote = releaseNote;
+        private ReleaseResult(T releaseNotes, URL releaseUrl, ReleaseException error) {
+            this.releaseNotes = releaseNotes;
             this.releaseUrl = releaseUrl;
             this.error = error;
         }
 
-        public ReleaseNote getReleaseNote() {
-            return releaseNote;
+        public T getReleaseNote() {
+            return releaseNotes;
         }
 
         public URL getReleaseUrl() {
@@ -307,24 +308,24 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
             return !isSuccess();
         }
 
-        public static ReleaseResult success(ReleaseNote releaseNote, URL url) {
+        public static <T> ReleaseResult<T> success(T releaseNotes, URL url) {
             requireNonNull(url);
 
-            return new ReleaseResult(releaseNote, url, null);
+            return new ReleaseResult<T>(releaseNotes, url, null);
         }
 
-        public static ReleaseResult fail(ReleaseException error) {
-            return new ReleaseResult(null, null, error);
+        public static <T> ReleaseResult<T> fail(ReleaseException error) {
+            return new ReleaseResult<T>(null, null, error);
         }
 
-        public static ReleaseResult fail(Throwable error) {
+        public static <T> ReleaseResult<T> fail(Throwable error) {
             return fail(new ReleaseException(error.getMessage()));
         }
 
         @Override
         public String toString() {
             return "ReleaseResult{" +
-                    "releaseNote=" + releaseNote +
+                    "releaseNote=" + releaseNotes +
                     ", releaseUrl=" + releaseUrl +
                     ", error=" + error +
                     '}';

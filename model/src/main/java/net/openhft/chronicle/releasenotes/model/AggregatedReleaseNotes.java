@@ -1,19 +1,20 @@
 package net.openhft.chronicle.releasenotes.model;
 
-import static java.util.Objects.requireNonNull;
-
+import java.util.List;
 import java.util.Objects;
 
-public final class ReleaseNote {
+import static java.util.Objects.requireNonNull;
+
+public final class AggregatedReleaseNotes {
 
     private final String tag;
     private final String title;
-    private final String body;
+    private final List<ReleaseNotes> releases;
 
-    public ReleaseNote(final String tag, final String title, final String body) {
+    public AggregatedReleaseNotes(final String tag, final String title, final List<ReleaseNotes> releases) {
         this.tag = requireNonNull(tag);
         this.title = requireNonNull(title);
-        this.body = requireNonNull(body);
+        this.releases = requireNonNull(releases);
     }
 
     public String getTag() {
@@ -24,21 +25,21 @@ public final class ReleaseNote {
         return title;
     }
 
-    public String getBody() {
-        return body;
+    public List<ReleaseNotes> getReleases() {
+        return releases;
     }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        final ReleaseNote releaseNote = (ReleaseNote) o;
-        return tag.equals(releaseNote.tag) && title.equals(releaseNote.title) && body.equals(releaseNote.body);
+        final AggregatedReleaseNotes releaseNote = (AggregatedReleaseNotes) o;
+        return tag.equals(releaseNote.tag) && title.equals(releaseNote.title) && releases.equals(releaseNote.releases);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(tag, title, body);
+        return Objects.hash(tag, title, releases);
     }
 
     @Override
@@ -46,7 +47,7 @@ public final class ReleaseNote {
         return "Release{" +
                 "tag='" + tag + '\'' +
                 ", title='" + title + '\'' +
-                ", body='" + body + '\'' +
+                ", releases=" + releases +
                 '}';
     }
 }
