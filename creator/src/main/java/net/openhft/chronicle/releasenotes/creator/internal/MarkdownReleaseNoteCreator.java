@@ -6,15 +6,11 @@ import static net.openhft.chronicle.releasenotes.creator.internal.util.MarkdownU
 import static net.openhft.chronicle.releasenotes.creator.internal.util.MarkdownUtil.header;
 import static net.openhft.chronicle.releasenotes.creator.internal.util.MarkdownUtil.italic;
 import static net.openhft.chronicle.releasenotes.creator.internal.util.MarkdownUtil.entry;
+import static net.openhft.chronicle.releasenotes.model.Issue.compareByLabel;
 
 import net.openhft.chronicle.releasenotes.creator.ReleaseNoteCreator;
-import net.openhft.chronicle.releasenotes.model.Issue;
-import net.openhft.chronicle.releasenotes.model.Label;
-import net.openhft.chronicle.releasenotes.model.ReleaseNote;
-
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
+import net.openhft.chronicle.releasenotes.model.AggregatedReleaseNotes;
+import net.openhft.chronicle.releasenotes.model.ReleaseNotes;
 
 public final class MarkdownReleaseNoteCreator implements ReleaseNoteCreator {
 
@@ -23,58 +19,47 @@ public final class MarkdownReleaseNoteCreator implements ReleaseNoteCreator {
     private static final String NEW_LINE = System.lineSeparator();
 
     @Override
-    public ReleaseNote createReleaseNote(String tag, List<Issue> issues) {
-        requireNonNull(tag);
-        requireNonNull(issues);
+    public String formatReleaseNotes(ReleaseNotes releaseNotes) {
+        requireNonNull(releaseNotes);
 
-        if (issues.size() == 0) {
-            return new ReleaseNote(tag, tag, italic(MISSING_CHANGELOG));
+        if (releaseNotes.getIssues().size() == 0) {
+            return italic(MISSING_CHANGELOG) + NEW_LINE;
         }
 
         final StringBuilder body = new StringBuilder();
 
-        issues.stream().sorted(Issue.compareByLabel(DEFAULT_LABEL)).collect(toList()).forEach(issue -> {
+        releaseNotes.getIssues().stream().sorted(compareByLabel(DEFAULT_LABEL)).collect(toList()).forEach(issue -> {
             body.append(
                 entry(
-                    label(bold(issue.getLabels().stream().map(Label::getName).findFirst().orElse(DEFAULT_LABEL)))
+                    label(bold(issue.getLabels().stream().findFirst().orElse(DEFAULT_LABEL)))
                 )
             )
             .append(String.format(" %s [#%d](%s)", issue.getTitle(), issue.getNumber(), issue.getUrl()));
 
-            getReleaseComment(issue).ifPresent(comment -> body.append(String.format(" - %s", comment)));
+            issue.getComment().ifPresent(comment -> body.append(String.format(" - %s", comment)));
 
             body.append(NEW_LINE);
         });
 
-        return new ReleaseNote(tag, tag, body.toString());
+        return body.toString();
     }
 
     @Override
-    public ReleaseNote createAggregatedReleaseNote(String tag, List<ReleaseNote> releaseNotes) {
-        requireNonNull(tag);
+    public String formatAggregatedReleaseNotes(AggregatedReleaseNotes releaseNotes) {
         requireNonNull(releaseNotes);
 
         final StringBuilder body = new StringBuilder();
 
-        releaseNotes.forEach(releaseNote ->
+        releaseNotes.getReleases().forEach(releaseNote ->
             body.append(header(bold(releaseNote.getTitle()), 3))
                 .append(NEW_LINE)
-                .append(releaseNote.getBody().isEmpty() ? entry(MISSING_CHANGELOG) + NEW_LINE : releaseNote.getBody())
+                .append(formatReleaseNotes(releaseNote))
                 .append(NEW_LINE));
 
-        return new ReleaseNote(tag, tag, body.toString());
+        return body.toString();
     }
 
     private String label(String text) {
         return "[" + text + "]";
-    }
-
-    private Optional<String> getReleaseComment(Issue issue) {
-        return issue.getComments().stream()
-            .filter(issueComment -> issueComment.getBody().startsWith("#comment "))
-            .sorted(Comparator.reverseOrder())
-            .map(issueComment -> issueComment.getBody().substring(issueComment.getBody().indexOf("#comment ") + "#comment ".length()))
-            .filter(issueComment -> !issueComment.trim().isEmpty())
-            .findFirst();
     }
 }

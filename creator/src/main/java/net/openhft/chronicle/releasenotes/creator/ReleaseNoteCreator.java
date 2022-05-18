@@ -1,16 +1,14 @@
 package net.openhft.chronicle.releasenotes.creator;
 
 import net.openhft.chronicle.releasenotes.creator.internal.MarkdownReleaseNoteCreator;
-import net.openhft.chronicle.releasenotes.model.Issue;
-import net.openhft.chronicle.releasenotes.model.ReleaseNote;
-
-import java.util.List;
+import net.openhft.chronicle.releasenotes.model.AggregatedReleaseNotes;
+import net.openhft.chronicle.releasenotes.model.ReleaseNotes;
 
 public interface ReleaseNoteCreator {
 
-    ReleaseNote createReleaseNote(String tag, List<Issue> issues);
+    String formatReleaseNotes(ReleaseNotes releaseNotes);
 
-    ReleaseNote createAggregatedReleaseNote(String tag, List<ReleaseNote> releaseNotes);
+    String formatAggregatedReleaseNotes(AggregatedReleaseNotes releaseNotes);
 
     static ReleaseNoteCreator markdown() {
         return new MarkdownReleaseNoteCreator();
