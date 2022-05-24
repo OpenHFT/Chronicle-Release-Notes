@@ -3,6 +3,7 @@ package net.openhft.chronicle.releasenotes.connector;
 import static java.util.Objects.requireNonNull;
 
 import net.openhft.chronicle.releasenotes.model.AggregatedReleaseNotes;
+import net.openhft.chronicle.releasenotes.model.Issue;
 import net.openhft.chronicle.releasenotes.model.ReleaseNotes;
 
 import java.net.URL;
@@ -199,6 +200,16 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
     default ReleaseResult<ReleaseNotes> queryReleaseFromBranch(String repository, String tag, String branch) {
         return createReleaseFromBranch(repository, tag, branch, BranchReleaseOptions.DEFAULT);
     }
+
+    /**
+     * Creates a comment in an issue identified by {@code number}.
+     *
+     * @param repository reference
+     * @param number issue
+     * @param message markdown
+     * @return {@link ReleaseResult} issue without comments
+     */
+    ReleaseResult<Issue> createIssueComment(String repository, int number, String message);
 
     @Override
     default void close() throws Exception {

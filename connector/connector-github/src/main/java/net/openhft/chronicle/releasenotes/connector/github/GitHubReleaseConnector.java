@@ -352,6 +352,39 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
         }
     }
 
+    public Issue getIssue(String repository, int number) throws IOException {
+
+        final GHRepository repositoryRef;
+
+            repositoryRef = getRepository(repository);
+
+            return mapIssue(repositoryRef.getIssue(number), true);
+    }
+
+    @Override
+    public ReleaseResult<Issue> createIssueComment(String repository, int number, String message) {
+        requireNonNull(repository);
+        requireNonNull(message);
+
+        logger.info("Commenting issue #{} in repository '{}'", number, repository);
+
+        final GHRepository repositoryRef;
+
+        try {
+            repositoryRef = getRepository(repository);
+
+            GHIssue issue = repositoryRef.getIssue(number);
+
+            // Some check to make sure the issue is valid?
+
+            issue.comment(message);
+
+            return ReleaseResult.success(mapIssue(issue, false), issue.getHtmlUrl());
+        } catch (IOException e) {
+            return ReleaseResult.fail(new RuntimeException("Failed to comment issue #" + number));
+        }
+    }
+
     @Override
     public Class<? extends ConnectorProviderKey> getKey() {
         return GitHubConnectorProviderKey.class;
