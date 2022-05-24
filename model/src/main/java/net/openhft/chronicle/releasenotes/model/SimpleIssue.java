@@ -14,13 +14,13 @@ public class SimpleIssue implements Issue {
     private final int number;
     private final String title;
     private final URL url;
-    private final Optional<String> label;
+    private final List<String> labels;
     private final Optional<String> comment;
 
-    public SimpleIssue(int number, String title, Optional<String> label, Optional<String> comment, URL url) {
+    public SimpleIssue(int number, String title, List<String> labels, Optional<String> comment, URL url) {
         this.number = number;
         this.title = requireNonNull(title);
-        this.label = requireNonNull(label);
+        this.labels = Collections.unmodifiableList(requireNonNull(labels));
         this.comment = requireNonNull(comment);
         this.url = requireNonNull(url);
     }
@@ -37,7 +37,7 @@ public class SimpleIssue implements Issue {
 
     @Override
     public List<String> getLabels() {
-        return label.map(Collections::singletonList).orElse(Collections.emptyList());
+        return labels;
     }
 
     @Override
@@ -57,14 +57,14 @@ public class SimpleIssue implements Issue {
         final SimpleIssue issue = (SimpleIssue) o;
         return number == issue.number
                 && title.equals(issue.title)
-                && label.equals(issue.label)
+                && labels.equals(issue.labels)
                 && comment.equals(issue.comment)
                 && url.equals(issue.url);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(number, title, label, comment, url);
+        return Objects.hash(number, title, labels, comment, url);
     }
 
     @Override
@@ -72,7 +72,7 @@ public class SimpleIssue implements Issue {
         return "FullIssue{" +
                 "number=" + number +
                 ", title='" + title + '\'' +
-                ", label=" + label +
+                ", labels=" + labels +
                 ", comment=" + comment +
                 ", url=" + url.toString() +
                 '}';

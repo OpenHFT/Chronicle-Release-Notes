@@ -282,7 +282,7 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
             this.error = error;
         }
 
-        public T getReleaseNote() {
+        public T getReleaseNotes() {
             return releaseNotes;
         }
 
@@ -337,6 +337,7 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
      */
     final class BranchReleaseOptions {
         public static final BranchReleaseOptions DEFAULT = new BranchReleaseOptions(
+            null,
             new ArrayList<>(),
             false,
             false,
@@ -344,18 +345,24 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
             false
         );
 
+        private final String title;
         private final List<String> ignoredLabels;
         private final boolean overrideRelease;
         private final boolean includeIssuesWithoutClosingKeyword;
         private final boolean includePullRequests;
         private final boolean includeAdditionalContext;
 
-        private BranchReleaseOptions(List<String> ignoredLabels, boolean overrideRelease, boolean includeIssuesWithoutClosingKeyword, boolean includePullRequests, boolean includeAdditionalContext) {
+        private BranchReleaseOptions(String title, List<String> ignoredLabels, boolean overrideRelease, boolean includeIssuesWithoutClosingKeyword, boolean includePullRequests, boolean includeAdditionalContext) {
+            this.title = title;
             this.ignoredLabels = ignoredLabels;
             this.overrideRelease = overrideRelease;
             this.includeIssuesWithoutClosingKeyword = includeIssuesWithoutClosingKeyword;
             this.includePullRequests = includePullRequests;
             this.includeAdditionalContext = includeAdditionalContext;
+        }
+
+        public String getTitle() {
+            return title;
         }
 
         public List<String> getIgnoredLabels() {
@@ -381,7 +388,8 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
         @Override
         public String toString() {
             return "BranchReleaseOptions{" +
-                    "ignoredLabels=" + ignoredLabels +
+                    "title=" + title +
+                    ", ignoredLabels=" + ignoredLabels +
                     ", overrideRelease=" + overrideRelease +
                     ", includeIssuesWithoutClosingKeyword=" + includeIssuesWithoutClosingKeyword +
                     ", includePullRequests=" + includePullRequests +
@@ -390,12 +398,18 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
         }
 
         public static final class Builder {
+            private String title;
             private final List<String> ignoredLabels = new ArrayList<>();
 
             private boolean overrideRelease;
             private boolean includeIssuesWithoutClosingKeyword;
             private boolean includePullRequests;
             private boolean includeAdditionalContext;
+
+            public Builder title(String title) {
+                this.title = title;
+                return this;
+            }
 
             public Builder ignoreLabels(String... labels) {
                 requireNonNull(labels);
@@ -437,6 +451,7 @@ public interface ReleaseConnector extends Connector, AutoCloseable {
 
             public BranchReleaseOptions build() {
                 return new BranchReleaseOptions(
+                    title,
                     ignoredLabels,
                     overrideRelease,
                     includeIssuesWithoutClosingKeyword,
