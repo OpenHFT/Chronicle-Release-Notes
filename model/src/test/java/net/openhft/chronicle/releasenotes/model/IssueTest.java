@@ -28,8 +28,8 @@ final class IssueTest {
         assertThrows(NullPointerException.class, () -> new SimpleIssue(0, null, null, null, null));
         assertThrows(NullPointerException.class, () -> new SimpleIssue(0, null, null, null, new URL(URL_SCHEME)));
         assertThrows(NullPointerException.class, () -> new SimpleIssue(0, null, null, Optional.empty(), new URL(URL_SCHEME)));
-        assertThrows(NullPointerException.class, () -> new SimpleIssue(0, null, Optional.empty(), Optional.empty(), new URL(URL_SCHEME)));
+        assertThrows(NullPointerException.class, () -> new SimpleIssue(0, null, Collections.emptyList(), Optional.empty(), new URL(URL_SCHEME)));
 
-        assertDoesNotThrow(() -> new SimpleIssue(0, "", Optional.empty(), Optional.empty(), new URL(URL_SCHEME)));
+        assertDoesNotThrow(() -> new SimpleIssue(0, "", Collections.emptyList(), Optional.empty(), new URL(URL_SCHEME)));
     }
 }

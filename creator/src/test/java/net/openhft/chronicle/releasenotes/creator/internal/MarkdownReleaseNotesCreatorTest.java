@@ -20,10 +20,10 @@ final class MarkdownReleaseNotesCreatorTest {
 
     @BeforeAll
     static void init() throws MalformedURLException {
-        ISSUES.add(new SimpleIssue(1, "Sample Issue", Optional.empty(), Optional.empty(), new URL(URL_SCHEME)));
-        ISSUES.add(new SimpleIssue(2, "Sample Feature", Optional.of("enhancement"), Optional.empty(), new URL(URL_SCHEME)));
-        ISSUES.add(new SimpleIssue(3, "Sample Bug", Optional.of("bug"), Optional.empty(), new URL(URL_SCHEME)));
-        ISSUES.add(new SimpleIssue(4, "Sample Wontfix", Optional.of("wontfix"), Optional.empty(), new URL(URL_SCHEME)));
+        ISSUES.add(new SimpleIssue(1, "Sample Issue", Collections.emptyList(), Optional.empty(), new URL(URL_SCHEME)));
+        ISSUES.add(new SimpleIssue(2, "Sample Feature", Collections.singletonList("enhancement"), Optional.empty(), new URL(URL_SCHEME)));
+        ISSUES.add(new SimpleIssue(3, "Sample Bug", Collections.singletonList("bug"), Optional.of("Explanation"), new URL(URL_SCHEME)));
+        ISSUES.add(new SimpleIssue(4, "Sample Wontfix", Collections.singletonList("wontfix"), Optional.empty(), new URL(URL_SCHEME)));
         ISSUES.add(new FullIssue(5, "Sample Complex", Arrays.asList("enhancement", "wontfix"), Collections.emptyList(), new URL(URL_SCHEME)));
     }
 

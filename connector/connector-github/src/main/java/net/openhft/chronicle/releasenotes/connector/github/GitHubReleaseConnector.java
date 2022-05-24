@@ -96,6 +96,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
             return getOrCreateRelease(
                 repositoryRef,
                 tag,
+                releaseOptions.getTitle() != null ? releaseOptions.getTitle() : tag,
                 () -> getIssuesForBranch(repositoryRef, branch, tag, releaseOptions.includeIssuesWithoutClosingKeyword(), releaseOptions.includePullRequests()),
                 releaseOptions.getIgnoredLabels(),
                 releaseOptions.overrideRelease() ? ReleaseAction.CREATE_OR_UPDATE : ReleaseAction.CREATE,
@@ -124,6 +125,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
             return getOrCreateRelease(
                 repositoryRef,
                 tag,
+                releaseOptions.getTitle() != null ? releaseOptions.getTitle() : tag,
                 () -> getIssuesForBranch(repositoryRef, branch, tag, endTag, releaseOptions.includeIssuesWithoutClosingKeyword(), releaseOptions.includePullRequests()),
                 releaseOptions.getIgnoredLabels(),
                 releaseOptions.overrideRelease() ? ReleaseAction.CREATE_OR_UPDATE : ReleaseAction.CREATE,
@@ -150,7 +152,9 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
 
             return getOrCreateRelease(
                 repositoryRef,
-                tag, () -> getClosedMilestoneIssues(repositoryRef, milestone),
+                tag,
+                tag,
+                () -> getClosedMilestoneIssues(repositoryRef, milestone),
                 releaseOptions.getIgnoredLabels(),
                 releaseOptions.overrideRelease() ? ReleaseAction.CREATE_OR_UPDATE : ReleaseAction.CREATE,
                 releaseOptions.includeAdditionalContext()
@@ -337,6 +341,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
             return getOrCreateRelease(
                     repositoryRef,
                     tag,
+                    releaseOptions.getTitle() != null ? releaseOptions.getTitle() : tag,
                     () -> getIssuesForBranch(repositoryRef, branch, tag, releaseOptions.includeIssuesWithoutClosingKeyword(), releaseOptions.includePullRequests()),
                     releaseOptions.getIgnoredLabels(),
                     ReleaseAction.QUERY,
@@ -368,7 +373,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
         }
     }
 
-    private ReleaseResult<ReleaseNotes> getOrCreateRelease(GHRepository repository, String tag, Supplier<List<GHIssue>> issueSupplier, List<String> ignoredLabels, ReleaseAction action, boolean includeAdditionalContext) {
+    private ReleaseResult<ReleaseNotes> getOrCreateRelease(GHRepository repository, String tag, String title, Supplier<List<GHIssue>> issueSupplier, List<String> ignoredLabels, ReleaseAction action, boolean includeAdditionalContext) {
         requireNonNull(repository);
         requireNonNull(tag);
         requireNonNull(issueSupplier);
@@ -383,7 +388,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
                 .map(issue -> mapIssue(issue, includeAdditionalContext))
                 .collect(toList());
 
-            final ReleaseNotes releaseNotes = new ReleaseNotes(tag, tag, issues);
+            final ReleaseNotes releaseNotes = new ReleaseNotes(tag, title, issues);
 
             final String body = releaseNoteCreator.formatReleaseNotes(releaseNotes);
 
@@ -394,10 +399,9 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
                     return ReleaseResult.fail(new RuntimeException("Release for tag '" + tag + "' already exists"));
                 }
 
-
                 URL htmlUrl;
                 if (action == ReleaseAction.CREATE_OR_UPDATE) {
-                    final GHRelease release = remoteRelease.update().name(tag).body(body).update();
+                    final GHRelease release = remoteRelease.update().name(title).body(body).update();
 
                     htmlUrl = release.getHtmlUrl();
                 } else {
@@ -409,7 +413,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
                 return ReleaseResult.fail(new RuntimeException("Release for tag '" + tag + "' does not exists"));
             }
 
-            final GHRelease release = repository.createRelease(releaseNotes.getTag()).name(tag).body(body).create();
+            final GHRelease release = repository.createRelease(releaseNotes.getTag()).name(title).body(body).create();
 
             return ReleaseResult.success(releaseNotes, release.getHtmlUrl());
         } catch (IOException e) {
