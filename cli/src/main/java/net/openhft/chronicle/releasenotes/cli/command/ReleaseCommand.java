@@ -8,6 +8,10 @@ import net.openhft.chronicle.releasenotes.connector.ReleaseConnector;
 import net.openhft.chronicle.releasenotes.connector.ReleaseConnector.BranchReleaseOptions;
 import net.openhft.chronicle.releasenotes.connector.ReleaseConnector.MilestoneReleaseOptions;
 import net.openhft.chronicle.releasenotes.connector.ReleaseConnector.ReleaseResult;
+import net.openhft.chronicle.releasenotes.model.FullIssue;
+import net.openhft.chronicle.releasenotes.model.Issue;
+import net.openhft.chronicle.releasenotes.model.IssueComment;
+import net.openhft.chronicle.releasenotes.model.ReleaseNotes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine.Command;
@@ -23,6 +27,7 @@ import java.util.List;
 public final class ReleaseCommand implements Runnable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ReleaseCommand.class);
+    private static final String RELEASE_MARKER = "Released in";
 
     @Option(
         names = {"-t", "--tag"},
@@ -88,6 +93,13 @@ public final class ReleaseCommand implements Runnable {
     private boolean allowPullRequests;
 
     @Option(
+            names = {"-N", "--comment"},
+            description = "Specifies that resolved issues should get a notification comment about the release",
+            defaultValue = "false"
+    )
+    private boolean comment;
+
+    @Option(
         names = {"-T", "--token"},
         description = "Specifies a GitHub personal access token used to gain access to the GitHub API",
         required = true,
@@ -134,16 +146,36 @@ public final class ReleaseCommand implements Runnable {
             .overrideRelease(override)
             .includeIssuesWithoutClosingKeyword(!requireCloseReference)
             .includePullRequests(allowPullRequests)
-            .includeAdditionalContext(false)
+            .includeAdditionalContext(comment)
             .build();
 
-        final ReleaseResult releaseResult = (endTag == null || endTag.isEmpty())
+        final ReleaseResult<ReleaseNotes> releaseResult = (endTag == null || endTag.isEmpty())
             ? releaseConnector.createReleaseFromBranch(repository, tag, branch, releaseOptions)
             : releaseConnector.createReleaseFromBranch(repository, tag, endTag, branch, releaseOptions);
 
         releaseResult.throwIfFail();
 
         System.out.println("Created release for tag '" + tag + "': " + releaseResult.getReleaseUrl().toString());
+
+        if (comment) {
+            ReleaseNotes releaseNotes = releaseResult.getReleaseNotes();
+            ISSUE: for (Issue issue : releaseNotes.getIssues()) {
+                if (issue instanceof FullIssue) {
+                    for (IssueComment existing : ((FullIssue) issue).getComments()) {
+                        if (existing.getBody().startsWith(RELEASE_MARKER))
+                            continue ISSUE;
+                    }
+
+                    ReleaseResult<Issue> commentedIssue = releaseConnector.createIssueComment(repository, issue.getNumber(),
+                            String.format("%s [%s](%s)", RELEASE_MARKER, releaseNotes.getTitle(),
+                                    releaseResult.getReleaseUrl()));
+
+                    commentedIssue.throwIfFail();
+
+                    System.out.println("Commented issue " + commentedIssue.getReleaseUrl());
+                }
+            }
+        }
     }
 
     private void handleMilestoneSource(String repository, ReleaseConnector releaseConnector) {
