@@ -1,9 +1,5 @@
 package net.openhft.chronicle.releasenotes.connector.github;
 
-import static java.util.Objects.requireNonNull;
-import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toMap;
-
 import net.openhft.chronicle.releasenotes.connector.ConnectorProviderKey;
 import net.openhft.chronicle.releasenotes.connector.ReleaseConnector;
 import net.openhft.chronicle.releasenotes.connector.github.graphql.GitHubGraphQLClient;
@@ -17,21 +13,15 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Optional;
-import java.util.StringJoiner;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
+
+import static java.util.Objects.requireNonNull;
+import static java.util.stream.Collectors.*;
 
 /**
  * @author Mislav Milicevic
@@ -599,8 +589,10 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
         logger.debug("Fetching issues on branch '{}' between tags '{}' and '{}' in repository '{}'", branch, startTag, endTag, repository.getFullName());
 
         final List<GHCommit> commits = getCommitsForBranch(repository, branch, startTag, endTag);
-        final List<Integer> issueIds = extractIssueIdsFromCommits(commits, includeIssuesWithoutClosingKeyword);
-
+        final Set<Integer> issueIds = extractIssueIdsFromCommits(commits, includeIssuesWithoutClosingKeyword);
+        if (includePullRequests) {
+            extractPullRequestIdsFromCommits(commits, branch, issueIds);
+        }
         return getIssuesFromIds(repository, issueIds, includePullRequests);
     }
 
@@ -657,67 +649,83 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
         }
     }
 
-    private List<Integer> extractIssueIdsFromCommits(List<GHCommit> commits, boolean includeIssuesWithoutClosingKeyword) {
+    private Set<Integer> extractIssueIdsFromCommits(List<GHCommit> commits, boolean includeIssuesWithoutClosingKeyword) {
         logger.debug("Extracting issue ids from {} commits", commits.size());
         return commits.stream()
-            .map(commit -> extractIssueIdsFromCommit(commit, includeIssuesWithoutClosingKeyword))
-            .flatMap(Collection::stream)
-            .distinct()
-            .collect(toList());
+                .map(commit -> {
+                    final Set<Integer> ids = new HashSet<>();
+                    extractIssueIdsFromCommit(commit, includeIssuesWithoutClosingKeyword, ids);
+                    return ids;
+                }).flatMap(Collection::stream)
+                .collect(toSet());
     }
 
-    private List<Integer> extractIssueIdsFromCommit(GHCommit commit, boolean includeIssuesWithoutClosingKeyword) {
+    private void extractPullRequestIdsFromCommits(List<GHCommit> commits, String branch, Set<Integer> issueIds) {
+        logger.debug("Extracting issue ids from {} commits", commits.size());
+        commits.forEach(commit -> updatePullRequestIds(commit, issueIds, branch));
+    }
+
+    private void extractIssueIdsFromCommit(GHCommit commit, boolean includeIssuesWithoutClosingKeyword, Set<Integer> ids) {
         requireNonNull(commit);
 
         logger.debug("Extracting issue ids from commit '{}' in repository '{}'", commit.getSHA1(), commit.getOwner().getFullName());
 
         try {
-            final String commitMessage = commit.getCommitShortInfo().getMessage()
+            getIssueIdsFromCommitMessage(commit, includeIssuesWithoutClosingKeyword, ids);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to fetch commit info for commit '" + commit.getSHA1() + "'");
+        }
+    }
+
+    private void updatePullRequestIds(GHCommit commit, Set<Integer> ids, String branch) {
+        PagedIterable<GHPullRequest> ghPullRequests = commit.listPullRequests().withPageSize(REQUEST_PAGE_SIZE);
+        for (GHPullRequest ghPullRequest : ghPullRequests) {
+//            skip pull request that go from release branch back to development branch
+            String ref = ghPullRequest.getHead().getRef();
+            if (ref.equals(branch)) continue;
+            ids.add(ghPullRequest.getNumber());
+        }
+    }
+
+    private void getIssueIdsFromCommitMessage(GHCommit commit, boolean includeIssuesWithoutClosingKeyword, Set<Integer> ids) throws IOException {
+        final String commitMessage = commit.getCommitShortInfo().getMessage()
                 .replaceAll("\n", " ")
                 .replaceAll("\r", "")
                 .replaceAll(" +", " ")
                 .replaceAll(",", "");
 
-            final String[] tokens = commitMessage.split(" ");
+        final String[] tokens = commitMessage.split(" ");
+        for (int i = 0; i < tokens.length; i++) {
+            final String token = tokens[i];
 
-            final List<Integer> ids = new ArrayList<>();
-
-            for (int i = 0; i < tokens.length; i++) {
-                final String token = tokens[i];
-
-                if (!includeIssuesWithoutClosingKeyword) {
-                    if (!isClosingKeyword(token)) {
-                        continue;
-                    }
-
-                    if (i == tokens.length - 1) {
-                        continue;
-                    }
-                }
-
-                final String tokenToCheck = includeIssuesWithoutClosingKeyword ? token : tokens[i + 1];
-
-                if (isLocalIssueReference(tokenToCheck)) {
-                    ids.add(Integer.valueOf(tokenToCheck.substring(1)));
-
-                    if (!includeIssuesWithoutClosingKeyword) {
-                        i++;
-                    }
+            if (!includeIssuesWithoutClosingKeyword) {
+                if (!isClosingKeyword(token)) {
                     continue;
                 }
 
-                if (isUrlIssueReference(commit.getOwner(), tokenToCheck)) {
-                    ids.add(Integer.valueOf(tokenToCheck.substring(tokenToCheck.lastIndexOf("/") + 1)));
-
-                    if (!includeIssuesWithoutClosingKeyword) {
-                        i++;
-                    }
+                if (i == tokens.length - 1) {
+                    continue;
                 }
             }
 
-            return ids;
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to fetch commit info for commit '" + commit.getSHA1() + "'");
+            final String tokenToCheck = includeIssuesWithoutClosingKeyword ? token : tokens[i + 1];
+
+            if (isLocalIssueReference(tokenToCheck)) {
+                ids.add(Integer.valueOf(tokenToCheck.substring(1)));
+
+                if (!includeIssuesWithoutClosingKeyword) {
+                    i++;
+                }
+                continue;
+            }
+
+            if (isUrlIssueReference(commit.getOwner(), tokenToCheck)) {
+                ids.add(Integer.valueOf(tokenToCheck.substring(tokenToCheck.lastIndexOf("/") + 1)));
+
+                if (!includeIssuesWithoutClosingKeyword) {
+                    i++;
+                }
+            }
         }
     }
 
@@ -763,7 +771,7 @@ public final class GitHubReleaseConnector implements ReleaseConnector {
         return issueId.charAt(0) != '0';
     }
 
-    private List<GHIssue> getIssuesFromIds(GHRepository repository, List<Integer> ids, boolean includePullRequests) {
+    private List<GHIssue> getIssuesFromIds(GHRepository repository, Set<Integer> ids, boolean includePullRequests) {
         requireNonNull(repository);
 
         if (ids.isEmpty()) {
